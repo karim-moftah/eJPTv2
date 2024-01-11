@@ -1,6 +1,15 @@
-# # Section 1: course2: Assessment Methodologies: Footprinting & Scanning    
+# Section 1: course2: Assessment Methodologies: Footprinting & Scanning    
 
+### Table of Contents
 
+- [Host Discovery](#Host-Discovery)
+- [Port Scanning](#Port-Scanning)
+- [Firewall/IDS Evasion](#Firewall/IDS-Evasion)
+- [Optimizing nmap scan](#Optimizing-nmap-scan)
+
+<br />
+
+---
 
 ### Host Discovery
 
@@ -10,7 +19,7 @@
 192.168.6.128
 ```
 
-
+<br />
 
 ```bash
 └─# nmap -sn 192.168.6.0/24  => only sends arp packets
@@ -33,7 +42,7 @@ Nmap done: 256 IP addresses (5 hosts up) scanned in 2.14 seconds
 
 ```
 
-
+<br />
 
 ```bash
 ─# nmap -sn 192.168.6.0/24 --send-ip   => sends arp, icmp, tcp packets (to port 80,443)
@@ -50,7 +59,7 @@ Nmap done: 256 IP addresses (3 hosts up) scanned in 23.49 seconds
 
 ```
 
-
+<br />
 
 scan the IPs from text file
 
@@ -183,7 +192,7 @@ Nmap done: 1 IP address (1 host up) scanned in 0.38 seconds
 
 
 
-
+<br />
 
 ##### determine specific port with TCP SYN scan on closed port with firewall enabled, nmap will respond with `filtered`
 
@@ -206,7 +215,7 @@ Nmap done: 1 IP address (1 host up) scanned in 0.38 seconds
 
 
 
-
+<br />
 
 ##### nmap ACK scan 14:36 (to be continue later)
 
@@ -228,7 +237,7 @@ Nmap done: 1 IP address (1 host up) scanned in 0.15 seconds
 
 ```
 
-
+<br />
 
 
 
@@ -251,7 +260,7 @@ Nmap done: 1 IP address (1 host up) scanned in 0.21 seconds
 
 
 
-
+<br />
 
 ---
 
@@ -265,7 +274,7 @@ nmap by default performs host discovery and if the host is up, it performs port 
 └─# nmap 192.168.6.129
 ```
 
-
+<br />
 
 skip host discovery and perform the default port scan
 
@@ -273,7 +282,7 @@ skip host discovery and perform the default port scan
 └─# nmap -Pn 192.168.6.129
 ```
 
-
+<br />
 
 perform fast scan (scan 100 ports instead of 1000 ports)
 
@@ -281,7 +290,7 @@ perform fast scan (scan 100 ports instead of 1000 ports)
 └─# nmap -Pn -F 192.168.6.129
 ```
 
-
+<br />
 
 ##### TCP SYN port scanning (the default scan if you are the root)
 
@@ -317,7 +326,7 @@ nmap will send SYN packet to the target, if the target is online and the port is
 
 
 
-
+<br />
 
 ##### TCP connect port scanning (the default scan if you are not the root)
 
@@ -349,7 +358,7 @@ nmap will send SYN packet to the target, if the target is online and the port is
 
 
 
-
+<br />
 
 ##### UDP port scanning (the default scan if you are not the root)
 
@@ -370,7 +379,7 @@ Nmap done: 1 IP address (1 host up) scanned in 0.34 seconds
 
 
 
-
+<br />
 
 ##### service version & OS version detection
 
@@ -397,7 +406,7 @@ Nmap done: 1 IP address (1 host up) scanned in 14.67 seconds
 
 ```
 
-
+<br />
 
 if nmap can not determine the OS, we can tell nmap to try to guess it
 
@@ -413,7 +422,7 @@ the higher intensity level increases the possibility of correctness
 
 
 
-
+<br />
 
 ##### nmap scripting engine (NSE)
 
@@ -423,7 +432,7 @@ to list all nmap scripts
 root@attackdefense:~# ls -l /usr/share/nmap/scripts/
 ```
 
-
+<br />
 
 to list all nmap scripts related to http
 
@@ -431,7 +440,7 @@ to list all nmap scripts related to http
 root@attackdefense:~# ls -l /usr/share/nmap/scripts/ | grep -i "http"
 ```
 
-
+<br />
 
 ##### gather system info with NSE
 
@@ -491,6 +500,8 @@ MAC Address: 02:42:C0:CE:CB:03 (Unknown)
 Service Info: OS: Unix
 ```
 
+<br />
+
 and to run more mongodb nmap scripts
 
 ```bash
@@ -499,6 +510,8 @@ root@attackdefense:~# ls -l /usr/share/nmap/scripts/ | grep -i "mongo"
 -rw-r--r-- 1 root root  2583 Jan  9  2019 mongodb-databases.nse
 -rw-r--r-- 1 root root  3663 Jan  9  2019 mongodb-info.nse
 ```
+
+<br />
 
 to know more about the script if it 's safe or not 
 
@@ -514,6 +527,8 @@ https://nmap.org/nsedoc/scripts/mongodb-databases.html
 
 Categories: **default discovery safe**
 
+<br />
+
 ```bash
 root@attackdefense:~# nmap --script-help=mongodb-brute.nse
 Starting Nmap 7.70 ( https://nmap.org ) at 2024-01-01 16:58 UTC
@@ -526,7 +541,7 @@ https://nmap.org/nsedoc/scripts/mongodb-brute.html
 
 Categories: **intrusive brute**
 
-
+<br />
 
 to run the script `--script=script_name` and determine the port number
 
@@ -543,7 +558,7 @@ MAC Address: 02:42:C0:CE:CB:03 (Unknown)
 
 ```
 
-
+<br />
 
 ##### gather info about the target from the second port (port 41288)
 
@@ -589,7 +604,7 @@ Service detection performed. Please report any incorrect results at https://nmap
 Nmap done: 1 IP address (1 host up) scanned in 6.46 seconds
 ```
 
-
+<br />
 
 ##### gather info about the target from the third port (port 55413 ftp) and run all nmap scripts related to FTP
 
@@ -599,11 +614,11 @@ root@attackdefense:~# nmap -Pn -sV  --script=ftp-* 192.206.203.3 -p 55413
 
 
 
+<br />
 
 
 
-
-#### Firewall/IDS Evasion
+### Firewall/IDS Evasion
 
 with `-sA` option: if there is a firewall, the result state will be **filtered**. if not it will be **unfiltered**
 
@@ -619,7 +634,7 @@ PORT     STATE      SERVICE
 
 ```
 
-
+<br />
 
 to evade the IDS detection or to make it harder to detect the port scan is to utilize fragmented packets (take the nmap packets and fragment them into smaller packets)
 
@@ -627,7 +642,7 @@ to evade the IDS detection or to make it harder to detect the port scan is to ut
 └─# nmap -Pn -sS -F -f 192.168.6.130            
 ```
 
-
+<br />
 
 ##### you can specify the MTU.
 
@@ -637,7 +652,7 @@ nmap will create 8-byte packets causing a confusion to the firewall. Have in min
 └─# nmap -Pn -sS -F -f --mtu 8 192.168.6.130            
 ```
 
-
+<br />
 
 ##### Decoy ip address (spoofing)
 
@@ -647,7 +662,7 @@ the first ip in the network most common is reserved for the gateway. in the purp
 └─# nmap -Pn -sS -sV -p445,3389 -f --data-length 200 -D 192.168.6.1 192.168.6.130       
 ```
 
-
+<br />
 
 ##### spoof the src port with `-g` option
 
@@ -655,9 +670,9 @@ the first ip in the network most common is reserved for the gateway. in the purp
 └─# nmap -Pn -sS -sV -p445,3389 -f --data-length 200 -g 53 -D 192.168.6.1 192.168.6.130       
 ```
 
+<br />
 
-
-#### Optimizing nmap scan
+### Optimizing nmap scan
 
 if you need to slow down your scan in case of dealing with IDS to make the scan looks like less suspicious.
 
@@ -669,7 +684,7 @@ if you need to slow down your scan in case of dealing with IDS to make the scan 
 └─# nmap -Pn -T0 192.168.6.130       
 ```
 
-
+<br />
 
 ##### use `--scan-delay`  to specify the amount of time between each packet
 
@@ -677,7 +692,7 @@ if you need to slow down your scan in case of dealing with IDS to make the scan 
 └─# nmap -Pn -sS --scan-delay 10s 192.168.6.130       
 ```
 
-
+<br />
 
 ##### use `--host-timeout` to determine the max time that nmap tries to get info from the target. 
 
