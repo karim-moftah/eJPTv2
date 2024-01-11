@@ -1,8 +1,16 @@
-# # Section 1: course 3: Assessment Methodologies: Enumeration    
+# Section 1: course 3: Assessment Methodologies: Enumeration    
 
+### Table of Contents
 
+- [SMB](#SMB)
+- [FTP](#FTP)
+- [SSH](#SSH)
+- [HTTP](#HTTP)
+- [SQL](#SQL)
 
-#### SMB
+---
+
+### SMB
 
 SMB is a network file sharing protocol that requires an open port on a computer or server to communicate with other systems. SMB ports are generally port numbers 139 and  445.
 
@@ -1514,7 +1522,7 @@ Hydra (https://github.com/vanhauser-thc/thc-hydra) starting at 2024-01-10 22:42:
 
 ---
 
-#### FTP
+### FTP
 
 **get the version of ftp service**
 
@@ -1630,7 +1638,7 @@ Hydra (https://github.com/vanhauser-thc/thc-hydra) starting at 2024-01-03 14:34:
 
 
 
-#### SSH
+### SSH
 
 **get the version of ssh service using nmap**
 
@@ -1859,7 +1867,7 @@ msf5 auxiliary(scanner/ssh/ssh_login) > run
 
 
 
-#### HTTP
+### HTTP
 
 **get the version of web server service using nmap**
 
