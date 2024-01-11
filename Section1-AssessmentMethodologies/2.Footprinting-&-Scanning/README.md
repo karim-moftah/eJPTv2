@@ -1,11 +1,11 @@
-# Section 1: course2: Assessment Methodologies: Footprinting & Scanning    
+# Section 1: course 2: Assessment Methodologies: Footprinting & Scanning    
 
 ### Table of Contents
 
 - [Host Discovery](#Host-Discovery)
 - [Port Scanning](#Port-Scanning)
-- [Firewall/IDS Evasion](#Firewall/IDS-Evasion)
-- [Optimizing nmap scan](#Optimizing-nmap-scan)
+- [Firewall/IDS Evasion](#firewallids-evasion)
+- [Optimizing nmap scan](#optimizing-nmap-scan)
 
 <br />
 
