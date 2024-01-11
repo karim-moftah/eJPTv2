@@ -1093,7 +1093,7 @@ Host script results:
 
 ```
 
-
+<br />
 
 **smbclient**
 
@@ -1129,7 +1129,7 @@ Try "help" to get a list of possible commands.
 smb: \> ls
 ```
 
-
+<br />
 
 **connect with rpcclient null session**
 
@@ -1153,7 +1153,7 @@ rpcclient $> lookupnames admin
         admin S-1-5-21-4056189605-2085045094-1961111545-1005 (User: 1)
 ```
 
-
+<br />
 
 **enum4linux**
 
@@ -1415,7 +1415,7 @@ No printers returned.
 
 ```
 
-
+<br />
 
 **check if SMB2 protocol is supported by the samba server**
 
@@ -1442,7 +1442,7 @@ msf5 auxiliary(scanner/smb/smb2) > run
 
 
 
-
+<br />
 
 **SMB bruteforce with  metasploit**
 
@@ -1502,7 +1502,7 @@ msf5 auxiliary(scanner/smb/smb_login) > run
 [*] Auxiliary module execution completed
 ```
 
-
+<br />
 
 **SMB bruteforce with hydra**
 
@@ -1518,11 +1518,13 @@ Hydra (https://github.com/vanhauser-thc/thc-hydra) starting at 2024-01-10 22:42:
 1 of 1 target successfully completed, 1 valid password found
 ```
 
-
+<br />
 
 
 
 ---
+
+<br />
 
 ### FTP
 
@@ -1543,7 +1545,7 @@ Network Distance: 1 hop
 Service Info: OS: Unix
 ```
 
-
+<br />
 
 **view nmap scripts related to ftp**
 
@@ -1560,7 +1562,7 @@ root@attackdefense:~# ls -l /usr/share/nmap/scripts/ | grep -i "ftp"
 -rw-r--r-- 1 root root  5678 Jan  9  2019 tftp-enum.nse
 ```
 
-
+<br />
 
 **bruteforce FTP users and passwords with nmap scripts**
 
@@ -1586,7 +1588,7 @@ PORT   STATE SERVICE
 MAC Address: 02:42:C0:A4:D0:03 (Unknown)
 ```
 
-
+<br />
 
 **login with `anonymous:anonymous`** 
 
@@ -1613,7 +1615,7 @@ Name (192.164.208.3:root): anonymous
 Password:
 ```
 
-
+<br />
 
 **bruteforce FTP users and passwords with hydra**
 
@@ -1634,11 +1636,11 @@ Hydra (https://github.com/vanhauser-thc/thc-hydra) starting at 2024-01-03 14:34:
 1 of 1 target successfully completed, 7 valid passwords found
 ```
 
-
+<br />
 
 ---
 
-
+<br />
 
 ### SSH
 
@@ -1661,7 +1663,7 @@ Service Info: OS: Linux; CPE: cpe:/o:linux:linux_kernel
 
 ```
 
-
+<br />
 
 **view nmap scripts related to ftp**
 
@@ -1676,7 +1678,7 @@ root@attackdefense:~# ls -l /usr/share/nmap/scripts/ | grep -i "ssh"
 -rw-r--r-- 1 root root  1446 Jan  9  2019 sshv1.nse
 ```
 
-
+<br />
 
 **ssh banner grapping**
 
@@ -1697,7 +1699,7 @@ Welcome to attack defense ssh recon lab!!
 root@192.95.65.3's password: 
 ```
 
-
+<br />
 
 **bruteforce SSH users and passwords with nmap scripts**
 **Note:** users must be a file containing users one per line. do not do  "userdb=root", you should write "root" in a file
@@ -1724,7 +1726,7 @@ MAC Address: 02:42:C0:E7:E0:03 (Unknown)
 
 ```
 
-
+<br />
 
 **get the ssh-rsa host key**
 
@@ -1743,7 +1745,7 @@ PORT   STATE SERVICE
 MAC Address: 02:42:C0:5F:41:03 (Unknown)
 ```
 
-
+<br />
 
 **authentication method is being used by the SSH server for user “admin” and "student"**
 
@@ -1776,7 +1778,7 @@ MAC Address: 02:42:C0:5F:41:03 (Unknown)
 
 **Note:** there is no authentication for user "student", so you can login with `ssh student@192.95.65.3` directly
 
-
+<br />
 
 **execute commands with `ssh-run` nmap script with no authentication user**
 
@@ -1800,7 +1802,7 @@ PORT   STATE SERVICE
 MAC Address: 02:42:C0:5F:41:03 (Unknown)
 ```
 
-
+<br />
 
 **bruteforce SSHusers and passwords with hydra**
 
@@ -1811,7 +1813,7 @@ root@attackdefense:~# hydra -l student -P /usr/share/metasploit-framework/data/w
 1 of 1 target successfully completed, 1 valid password found
 ````
 
-
+<br />
 
 **using metasploit scanner `scanner/ssh/ssh_login`**
 
@@ -1863,11 +1865,11 @@ msf5 auxiliary(scanner/ssh/ssh_login) > run
 [*] Auxiliary module execution completed
 ```
 
-
+<br />
 
 ---
 
-
+<br />
 
 ### HTTP
 
@@ -1929,7 +1931,7 @@ Nmap done: 1 IP address (1 host up) scanned in 7.00 seconds
 
 ```
 
-
+<br />
 
 **whatweb**
 
@@ -1941,7 +1943,7 @@ http://10.4.23.177 [302 Found] ASP_NET[4.0.30319], Cookies[ASP.NET_SessionId,Ser
 http://10.4.23.177/Default.aspx [302 Found] ASP_NET[4.0.30319], Cookies[ASP.NET_SessionId,Server], Country[RESERVED][ZZ], HTTPServer[Microsoft-IIS/10.0], HttpOnly[ASP.NET_SessionId], IP[10.4.23.177], Microsoft-IIS[10.0], RedirectLocation[/Default.aspx], Title[Object moved], X-Powered-By[ASP.NET], X-XSS-Protection[0]
 ```
 
-
+<br />
 
 **`dirb` to bruteforce directories**
 
@@ -1974,7 +1976,7 @@ GENERATED WORDS: 4612
                                                   
 ```
 
-
+<br />
 
 **curl**
 
@@ -1982,7 +1984,7 @@ GENERATED WORDS: 4612
 root@attackdefense:~# curl -vv http://192.89.118.3 
 ```
 
-
+<br />
 
 **wget**
 
@@ -1990,7 +1992,7 @@ root@attackdefense:~# curl -vv http://192.89.118.3
 root@attackdefense:~# wget http://192.89.118.3 
 ```
 
-
+<br />
 
 **lyxn**
 
@@ -1998,7 +2000,7 @@ root@attackdefense:~# wget http://192.89.118.3
 root@INE:~# lyxn http://192.89.118.3 
 ```
 
-
+<br />
 
 **using metasploit scanner `auxiliary/scanner/http/brute_dirs`**
 
@@ -2018,17 +2020,17 @@ msf6 auxiliary(scanner/http/brute_dirs) >
 
 ```
 
-
+<br />
 
 ----
 
-
+<br />
 
 ### SQL
 
 #### 1-MYSQL
 
-
+<br />
 
 **MYSQL version with nmap**
 
@@ -2063,7 +2065,7 @@ MAC Address: 02:42:C0:01:AD:03 (Unknown)
 
 ```
 
-
+<br />
 
 **gather mysql users and databases with nmap**
 
@@ -2112,7 +2114,7 @@ MAC Address: 02:42:C0:01:AD:03 (Unknown)
 
 ```
 
-
+<br />
 
 **gather mysql variables**
 
@@ -2458,7 +2460,7 @@ MAC Address: 02:42:C0:01:AD:03 (Unknown)
 
 ```
 
-
+<br />
 
 **mysql audit**
 
@@ -2523,7 +2525,7 @@ Service detection performed. Please report any incorrect results at https://nmap
 Nmap done: 1 IP address (1 host up) scanned in 0.48 seconds
 ```
 
-
+<br />
 
 **dump mysql hashes**
 
@@ -2546,7 +2548,7 @@ MAC Address: 02:42:C0:01:AD:03 (Unknown)
 
 ```
 
-
+<br />
 
 **Gather information from the MS-SQL server**
 
@@ -2577,7 +2579,7 @@ MAC Address: 02:42:C0:01:AD:03 (Unknown)
 
 ```
 
-
+<br />
 
 
 
@@ -2597,7 +2599,7 @@ MAC Address: 02:42:C0:01:AD:03 (Unknown)
 
 ```
 
-
+<br />
 
 
 
@@ -2661,7 +2663,7 @@ MySQL [books]> select * from authors;
 +----+------------+-----------+-----------------------------+------------+---------------------+
 ```
 
-
+<br />
 
 **use metasploit to know writable directories**
 
@@ -2703,7 +2705,7 @@ msf5 auxiliary(scanner/mysql/mysql_writable_dirs) > run
 [*] Auxiliary module execution completed
 ```
 
-
+<br />
 
 **dump mysql hashes using metasploit**
 
@@ -2743,7 +2745,7 @@ msf5 auxiliary(scanner/mysql/mysql_hashdump) > run
 [*] Auxiliary module execution completed
 ```
 
-
+<br />
 
 **gather mysql schema using metasploit** 
 
@@ -2824,7 +2826,7 @@ msf5 auxiliary(scanner/mysql/mysql_schemadump) > run
 [*] Auxiliary module execution completed
 ```
 
-
+<br />
 
 **read  sensitive files using metasploit**
 
@@ -2867,7 +2869,7 @@ msf5 auxiliary(scanner/mysql/mysql_file_enum) > run
 [*] Auxiliary module execution completed
 ```
 
-
+<br />
 
 
 
@@ -2911,7 +2913,7 @@ dbadmin:$6$vZ3Fv3x6$qdB/lOAC1EtlKEC2H8h5f7t33j65WDbHHV50jloFkxFBeQC8QkdbQKpHEp/B
 1 row in set (0.001 sec)
 ```
 
-
+<br />
 
 **mysql bruteforce users and passwords** 
 
@@ -2956,7 +2958,7 @@ msf5 auxiliary(scanner/mysql/mysql_login) > run
 [*] Auxiliary module execution completed
 ```
 
-
+<br />
 
 **bruteforce mysql users and passwords with hydra**
 
@@ -2975,7 +2977,7 @@ Hydra (https://github.com/vanhauser-thc/thc-hydra) starting at 2024-01-07 13:27:
 
 
 
-
+<br />
 
 ### 2-MSSQL
 
@@ -3007,7 +3009,7 @@ root@attackdefense:~# locate *.nse | grep -i "ms-sql"
 
 ```
 
-
+<br />
 
 **Gather information from the MS-SQL server**
 
@@ -3034,7 +3036,7 @@ Host script results:
 
 ```
 
-
+<br />
 
 
 
@@ -3063,7 +3065,7 @@ PORT     STATE SERVICE
 
 ```
 
-
+<br />
 
 **identify mssql empty password users**
 
@@ -3081,7 +3083,7 @@ PORT     STATE SERVICE
 
 ```
 
-
+<br />
 
 **bruteforce mssql users and passwords with nmap scripts**
 
@@ -3103,7 +3105,7 @@ PORT     STATE SERVICE
 
 ```
 
-
+<br />
 
 **run mssql query with nmap** 
 
@@ -3206,7 +3208,7 @@ Nmap done: 1 IP address (1 host up) scanned in 0.45 seconds
 
 ```
 
-
+<br />
 
 **dump mssql hashes**
 
@@ -3233,7 +3235,7 @@ Nmap done: 1 IP address (1 host up) scanned in 1.18 seconds
 
 ```
 
-
+<br />
 
 **Command Excecution using mssql **
 
@@ -3255,7 +3257,7 @@ PORT     STATE SERVICE
 
 ```
 
-
+<br />
 
 **bruteforce mssql users and passwords with metasploit**
 
@@ -3335,7 +3337,7 @@ msf6 auxiliary(scanner/mssql/mssql_login) > run
 
 ```
 
-
+<br />
 
 **Gather mssql info using metasploit**
 
@@ -3381,7 +3383,7 @@ msf6 auxiliary(admin/mssql/mssql_sql) > run
 
 ```
 
-
+<br />
 
 **enumerate  mssql using metasploit**
 
@@ -3501,7 +3503,7 @@ msf6 auxiliary(admin/mssql/mssql_enum) > run
 
 ```
 
-
+<br />
 
 **Enumerate mssql users**
 
@@ -3560,7 +3562,7 @@ msf6 auxiliary(admin/mssql/mssql_enum_sql_logins) > run
 
 ```
 
-
+<br />
 
 **execute commands to mssql server using metasploit**
 
@@ -3603,7 +3605,7 @@ msf6 auxiliary(admin/mssql/mssql_exec) > exploit
 
 ```
 
-
+<br />
 
 **enumerate mssql domain accounts**
 
@@ -3669,7 +3671,7 @@ msf6 auxiliary(admin/mssql/mssql_enum_domain_accounts) > exploit
 
 
 
-
+<br />
 
 ##### References
 
