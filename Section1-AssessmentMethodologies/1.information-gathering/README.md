@@ -1,4 +1,11 @@
-# # Section 1: Assessment Methodologies: Information Gathering
+# Section 1 course 1: Assessment Methodologies: Information Gathering
+
+### Table of Contents
+
+- [Passive information gathering](#SMB)
+- [Active Information Gathering](#SMB)
+
+
 
 ### Information Gathering
 
@@ -38,7 +45,7 @@ hackersploit.org mail is handled by 0 _dc-mx.2c2a3526b376.hackersploit.org.
 
 there are two ip addresses (two IPv4, two IPv6) because the website is behind cloudflare firewall
 
-
+<br />
 
 #### 2- robots.txt
 
@@ -48,7 +55,7 @@ Robots.txt is a text file webmasters create to instruct web robots  (typically s
 https://hackersploit.org/robots.txt  
 ```
 
-
+<br />
 
 #### 3- sitemap.xml
 
@@ -58,14 +65,14 @@ An XML sitemap is a file that lists a website’s essential pages, making  sure 
 https://hackersploit.org/sitemap.xml
 ```
 
-
+<br />
 
 #### 4- add-on browser extentions
 
 - wappalyzer
 - builtwith
 
-
+<br />
 
 #### 5- whatweb
 
@@ -75,13 +82,13 @@ http://hackersploit.org [301 Moved Permanently] Country[EUROPEAN UNION][EU], HTT
 https://hackersploit.org/ [403 Forbidden] Country[EUROPEAN UNION][EU], HTML5, HTTPServer[cloudflare], IP[188.114.97.6], Title[403 Forbidden][Title element contains newline(s)!], UncommonHeaders[referrer-policy,x-turbo-charged-by,cf-cache-status,report-to,nel,cf-ray,alt-svc]
 ```
 
-
+<br />
 
 #### 6- HTTrack
 
 website copier
 
-
+<br />
 
 #### 7- whois
 
@@ -103,11 +110,11 @@ Registry Registrant ID: REDACTED FOR PRIVACY
 
 ```
 
-
+<br />
 
 #### 8- [Netcraft](https://www.netcraft.com/tools/)
 
-
+<br />
 
 #### 9- dnsrecon
 
@@ -172,9 +179,11 @@ DNSRecon is a Python script that provides the ability to perform:
 
 cloudflare does not proxy mail server address  
 
-
+<br />
 
 #### 10- [dnsdumpster](https://dnsdumpster.com/)
+
+<br />
 
 #### 11- wafw00f
 
@@ -186,7 +195,7 @@ to view all firewalls that wafw00f can detect
                       └─$ wafw00f -l
                       ```
 
-
+<br />
 
 ```bash
 └─$ wafw00f hackersploit.org
@@ -196,6 +205,8 @@ to view all firewalls that wafw00f can detect
 [~] Number of requests: 2
 
 ```
+
+<br />
 
 to make it verbose
 
@@ -219,7 +230,7 @@ INFO:wafw00f:Found: 1 matches.
                                   
 ```
 
-
+<br />
 
 #### 12- Sublist3r
 
@@ -229,7 +240,7 @@ Sublist3r is a python tool designed to enumerate subdomains of websites using OS
 └─$ sublist3r -d ine.com
 ```
 
-
+<br />
 
 #### 13- Google dorks
 
@@ -242,13 +253,19 @@ Sublist3r is a python tool designed to enumerate subdomains of websites using OS
 - cache:ine.com  
 - inurl:auth_user_file.txt 
 
-
+<br />
 
 #### 14- [Google hacking database](https://www.exploit-db.com/google-hacking-database)
 
+<br />
+
 #### 15- [archive.org](https://web.archive.org/)
 
+<br />
+
 #### 16- [have i been pwned?](https://haveibeenpwned.com/)
+
+<br />
 
 ---
 
@@ -322,7 +339,7 @@ zonetransfer.me.        7200    IN      SOA     nsztm1.digi.ninja. robin.digi.ni
 
 ```
 
-
+<br />
 
 #### 2- dnsenum
 
@@ -453,7 +470,7 @@ done.
 
 
 
-
+<br />
 
 #### 3- fierce
 
@@ -526,7 +543,7 @@ Zone: success
 
 ```
 
-
+<br />
 
 ```bash
 └─# fierce --domain hackersploit.org
@@ -539,7 +556,7 @@ Found: mail.hackersploit.org. (104.21.44.180)
 
 ```
 
-
+<br />
 
 #### 4- Host discovery
 
@@ -549,7 +566,7 @@ OR
 └─# netdiscover                                   
 ```
 
-
+<br />
 
 #### 5- Port scanning
 
@@ -557,7 +574,7 @@ OR
 └─# nmap 192.168.6.128 
 ```
 
-
+<br />
 
 if the ping probs are blocked by the target use -Pn to not check if the host is online, just perform the port scan 
 
@@ -565,7 +582,7 @@ if the ping probs are blocked by the target use -Pn to not check if the host is 
 └─# nmap -Pn 192.168.6.128
 ```
 
-
+<br />
 
 scan specific ports
 
@@ -573,7 +590,7 @@ scan specific ports
 └─# nmap -Pn 192.168.6.128 -p 80,22
 ```
 
-
+<br />
 
 scan all ports 
 
@@ -581,7 +598,7 @@ scan all ports
 └─# nmap -Pn 192.168.6.128 -p-
 ```
 
-
+<br />
 
 perform fast scan (most common 100 ports)
 
@@ -589,7 +606,7 @@ perform fast scan (most common 100 ports)
 └─# nmap -Pn -F 192.168.6.128 
 ```
 
-
+<br />
 
 by default nmap performs a  TCP port scan, to perform UDP port scan use -sU
 
@@ -597,7 +614,7 @@ by default nmap performs a  TCP port scan, to perform UDP port scan use -sU
 └─# nmap -Pn -sU 192.168.6.128 
 ```
 
-
+<br />
 
 increase the verbosity of the scan 
 
@@ -605,7 +622,7 @@ increase the verbosity of the scan
 └─# nmap -Pn 192.168.6.128 -v
 ```
 
-
+<br />
 
 perform service version detection
 
@@ -613,7 +630,7 @@ perform service version detection
 └─# nmap -Pn -sV 192.168.6.128 
 ```
 
-
+<br />
 
 Detect the operating system on the victim
 
@@ -621,7 +638,7 @@ Detect the operating system on the victim
 └─# nmap -Pn -O 192.168.6.128 
 ```
 
-
+<br />
 
 run scripts on the open ports 
 
@@ -629,7 +646,7 @@ run scripts on the open ports
 └─# nmap -Pn -sV -sC 192.168.6.128 
 ```
 
-
+<br />
 
 perform aggressive scan ( combine -sV, -O, -sC)
 
@@ -637,7 +654,7 @@ perform aggressive scan ( combine -sV, -O, -sC)
 └─# nmap -Pn -A 192.168.6.128 
 ```
 
-
+<br />
 
 speed up the scan with -T from T0 (slow) to T4 (insane)
 
@@ -645,7 +662,7 @@ speed up the scan with -T from T0 (slow) to T4 (insane)
 └─# nmap -Pn -T4 192.168.6.128 
 ```
 
-
+<br />
 
 output the scan result into file
 
