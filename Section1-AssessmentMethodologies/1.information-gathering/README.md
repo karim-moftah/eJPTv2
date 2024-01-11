@@ -5,7 +5,9 @@
 - [Passive information gathering](#1--passive-information-gathering)
 - [Active Information Gathering](#2--active-information-gathering)
 
+<br />
 
+---
 
 ### Information Gathering
 
