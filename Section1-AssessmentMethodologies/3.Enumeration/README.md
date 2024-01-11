@@ -111,7 +111,7 @@ Host script results:
 |_  start_date: 2024-01-08T19:47:20
 ```
 
-
+ <br />
 
 **mount the SMB share of the target machine using the Windows File Explorer.**
 
@@ -129,13 +129,15 @@ Host script results:
 
 <img src="./assets/4.png" style="zoom:80%;" />
 
+ <br />
+
 **mount the SMB share of the target machine using the Windows File Explorer as well as using the command prompt.**
 
 ```
 PS C:\Users\Administrator> net use Z: \\ip\C$ password /user:administrator
 ```
 
-
+ <br />
 
 **to remove the connection**
 
@@ -143,7 +145,7 @@ PS C:\Users\Administrator> net use Z: \\ip\C$ password /user:administrator
 PS C:\Users\Administrator> net use * /delete
 ```
 
-
+ <br />
 
 **nmap scripts related to smb**
 
@@ -187,9 +189,9 @@ root@attackdefense:~# ls -l /usr/share/nmap/scripts/ | grep -i "smb"
 
 ```
 
+ <br />
 
-
-default nmap scripts for port 139, 445 
+**default nmap scripts for port 139, 445** 
 
 ```bash
 root@attackdefense:~# nmap 10.4.19.58 -sV -p139,445 -sC
@@ -228,7 +230,7 @@ Host script results:
 
 from `smb-security-mode`: the guest account is exist 
 
-
+ <br />
 
 **enumerate smb sessions `smb-enum-sessions`**
 
@@ -253,7 +255,7 @@ Host script results:
 
 there is a valid session for user `bob`
 
- 
+  <br />
 
 **enumerate smb session for specific user `smb-enum-sessions`**
 
@@ -281,7 +283,7 @@ Service detection performed. Please report any incorrect results at https://nmap
 
 administrator has an active session (nmap logged in with the credential, so it's my session (check the ip in \\\ip it's my ip address) )
 
-
+ <br />
 
 **enumerate smb shares with nmap `smb-enum-shares`**
 
@@ -375,7 +377,7 @@ The IPC$ share is created by the Windows Server service. This special share exis
 
 - We can observe that the administrator user has read and write privilege to the entire C$. i.e C:\
 
-
+ <br />
 
 **enumerate smb users with nmap `smb-enum-users`**
 
@@ -404,7 +406,7 @@ Host script results:
 
 `Guest` user is enabled and his Password is not required
 
-
+ <br />
 
 
 
@@ -430,7 +432,7 @@ Host script results:
 
 ```
 
-
+ <br />
 
 
 
@@ -464,7 +466,7 @@ Host script results:
 |_    Account lockout disabled
 ```
 
-
+ <br />
 
 **enumerate smb groups with nmap `smb-enum-groups`**
 
@@ -506,9 +508,9 @@ Host script results:
 |_  WIN-OMCNBKR66MN\WinRMRemoteWMIUsers__ (RID: 1000): <empty>
 ```
 
+ <br />
 
-
-**enumerate smb services with nmap `smb-enum-services ` **
+**enumerate smb services with nmap `smb-enum-services `** 
 
 ```bash
 root@attackdefense:~# nmap 10.4.25.63 -sV -p139,445 --script=smb-enum-services --script-args smbusername=administrator,smbpassword=smbserver_771
@@ -690,7 +692,7 @@ PORT    STATE SERVICE      VERSION
 Service Info: OSs: Windows, Windows Server 2008 R2 - 2012; CPE: cpe:/o:microsoft:windows
 ```
 
-
+ <br />
 
 
 
@@ -848,7 +850,7 @@ Host script results:
 | 218103  2013-08-22T06:54:44  color\RSWOP.icm
 ```
 
-
+ <br />
 
 **enumerate smb shares with smbmap**
 
@@ -886,7 +888,7 @@ root@attackdefense:~# smbmap -H 10.4.30.102 -u guest -p ""
 
 `guest` has read only access to `IPC$` and `ptint$`, while `administrator` has a different access 
 
-
+ <br />
 
 **run commands on the smb server using smbmap**
 
@@ -927,7 +929,7 @@ root@attackdefense:~# smbmap -H 10.4.30.102 -u administrator -p smbserver_771 -x
 
 ```
 
-
+ <br />
 
 **list drivers with smbmap**
 
@@ -939,7 +941,7 @@ root@attackdefense:~# smbmap -H 10.4.30.102 -u administrator -p smbserver_771 -L
 
 ```
 
-
+ <br />
 
 **reclusively list drive**
 
@@ -965,7 +967,7 @@ root@attackdefense:~# smbmap -H 10.4.30.102 -u administrator -p smbserver_771 -r
 	dr--r--r--                0 Thu Jan 11 01:45:14 2024	Windows
 ```
 
-
+ <br />
 
 **upload files with smbmap**
 
@@ -976,7 +978,7 @@ root@attackdefense:~# smbmap -H 10.4.30.102 -u administrator -p smbserver_771 --
 
 ```
 
-
+ <br />
 
 **download files with smbmap**
 
@@ -989,7 +991,7 @@ root@attackdefense:~# ls
 
 ```
 
-
+ <br />
 
 **Run Powershell Script on Victim SMB host (change the IP in the code to your IP addres, i.e where the shell connects back to)**
 
@@ -1012,7 +1014,7 @@ C:\Windows\system32>whoami
  nt authority\system
 ```
 
-
+ <br />
 
 **SMB on linux machines (Samba)**
 
@@ -1043,9 +1045,9 @@ Service Info: Host: SAMBA-RECON
 
 by default nmap guessed this smb on microsoft but with `-sV` nmap detected that it is a linux samba 
 
+<br />
 
-
-**SMB UDP ports **
+**SMB UDP ports**
 
 ```bash
 root@attackdefense:~# nmap 192.92.234.3 -sU --top-port 25 --open
