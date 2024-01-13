@@ -387,7 +387,7 @@ meterpreter >
 
 ```
 
-
+<img src="./assets/4.png" style="zoom:80%;" />
 
 
 
